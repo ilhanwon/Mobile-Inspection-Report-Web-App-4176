@@ -2,6 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import supabase from '../lib/supabase';
 
 const AuthContext = createContext();
+const DEBUG = import.meta.env.DEV;
+
+const logError = (msg, err) => {
+  console.error(msg, DEBUG ? err : err?.message);
+};
 
 // 이메일 유효성 검사 함수
 const isValidEmail = (email) => {
@@ -19,11 +24,11 @@ export function AuthProvider({ children }) {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error('세션 확인 오류:', error);
+          logError('세션 확인 오류:', error);
         }
         setUser(session?.user ?? null);
       } catch (error) {
-        console.error('세션 로드 오류:', error);
+        logError('세션 로드 오류:', error);
       } finally {
         setLoading(false);
       }
@@ -34,7 +39,9 @@ export function AuthProvider({ children }) {
     // 인증 상태 변화 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+        if (DEBUG) {
+          console.log('Auth state changed:', event, session?.user?.email);
+        }
         setUser(session?.user ?? null);
         setLoading(false);
       }
@@ -46,7 +53,9 @@ export function AuthProvider({ children }) {
   // 안전한 프로필 생성 함수
   const createUserProfile = async (userId, fullName, email) => {
     try {
-      console.log('프로필 생성 시도:', { userId, fullName, email });
+      if (DEBUG) {
+        console.log('프로필 생성 시도:', { userId, fullName, email });
+      }
 
       // 먼저 프로필이 이미 존재하는지 확인
       const { data: existingProfile } = await supabase
@@ -73,7 +82,7 @@ export function AuthProvider({ children }) {
         .single();
 
       if (error) {
-        console.error('프로필 생성 오류:', error);
+        logError('프로필 생성 오류:', error);
         
         // 중복 키 오류인 경우 정상으로 처리
         if (error.code === '23505' || error.message.includes('duplicate key')) {
@@ -84,17 +93,21 @@ export function AuthProvider({ children }) {
         return { success: false, error: error.message };
       }
 
-      console.log('프로필 생성 성공:', data);
+      if (DEBUG) {
+        console.log('프로필 생성 성공:', data);
+      }
       return { success: true, data };
     } catch (error) {
-      console.error('프로필 생성 예외:', error);
+      logError('프로필 생성 예외:', error);
       return { success: false, error: error.message };
     }
   };
 
   const signUp = async (email, password, fullName) => {
     try {
-      console.log('회원가입 시도:', { email, fullName });
+      if (DEBUG) {
+        console.log('회원가입 시도:', { email, fullName });
+      }
 
       // 클라이언트 측 이메일 유효성 검사
       if (!isValidEmail(email)) {
@@ -118,7 +131,7 @@ export function AuthProvider({ children }) {
       });
 
       if (error) {
-        console.error('회원가입 오류:', error);
+        logError('회원가입 오류:', error);
         
         // 구체적인 오류 메시지 처리
         if (error.message.includes('User already registered')) {
@@ -134,7 +147,9 @@ export function AuthProvider({ children }) {
         }
       }
 
-      console.log('회원가입 성공:', data);
+      if (DEBUG) {
+        console.log('회원가입 성공:', data);
+      }
 
       // 사용자가 생성되었으면 프로필 생성 및 로그인 시도
       if (data.user) {
@@ -209,7 +224,7 @@ export function AuthProvider({ children }) {
             return { data, error: null };
           }
         } catch (profileError) {
-          console.error('프로필 생성/로그인 중 예외:', profileError);
+          logError('프로필 생성/로그인 중 예외:', profileError);
           
           // 프로필 생성 실패해도 계정은 생성되었으므로 성공으로 처리
           return { 
@@ -223,14 +238,16 @@ export function AuthProvider({ children }) {
 
       return { data, error: null };
     } catch (error) {
-      console.error('회원가입 실패:', error);
+      logError('회원가입 실패:', error);
       return { data: null, error };
     }
   };
 
   const signIn = async (email, password) => {
     try {
-      console.log('로그인 시도:', email);
+      if (DEBUG) {
+        console.log('로그인 시도:', email);
+      }
 
       // 클라이언트 측 이메일 유효성 검사
       if (!isValidEmail(email)) {
@@ -243,7 +260,7 @@ export function AuthProvider({ children }) {
       });
 
       if (error) {
-        console.error('로그인 오류:', error);
+        logError('로그인 오류:', error);
         
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
@@ -279,10 +296,12 @@ export function AuthProvider({ children }) {
         }
       }
 
-      console.log('로그인 성공:', data.user?.email);
+      if (DEBUG) {
+        console.log('로그인 성공:', data.user?.email);
+      }
       return { data, error: null };
     } catch (error) {
-      console.error('로그인 실패:', error);
+      logError('로그인 실패:', error);
       return { data: null, error };
     }
   };
@@ -292,12 +311,12 @@ export function AuthProvider({ children }) {
       console.log('로그아웃 시도');
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('로그아웃 오류:', error);
+        logError('로그아웃 오류:', error);
         throw error;
       }
       console.log('로그아웃 성공');
     } catch (error) {
-      console.error('로그아웃 실패:', error);
+      logError('로그아웃 실패:', error);
     }
   };
 
