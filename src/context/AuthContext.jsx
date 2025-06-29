@@ -64,8 +64,10 @@ export function AuthProvider({ children }) {
         .eq('id', userId)
         .single();
 
-      if (existingProfile) {
-        console.log('프로필이 이미 존재함');
+        if (existingProfile) {
+        if (DEBUG) {
+          console.log('프로필이 이미 존재함');
+        }
         return { success: true, isExisting: true };
       }
 
@@ -85,8 +87,10 @@ export function AuthProvider({ children }) {
         logError('프로필 생성 오류:', error);
         
         // 중복 키 오류인 경우 정상으로 처리
-        if (error.code === '23505' || error.message.includes('duplicate key')) {
-          console.log('프로필이 이미 존재함 (중복 키)');
+          if (error.code === '23505' || error.message.includes('duplicate key')) {
+          if (DEBUG) {
+            console.log('프로필이 이미 존재함 (중복 키)');
+          }
           return { success: true, isExisting: true };
         }
         
@@ -167,14 +171,18 @@ export function AuthProvider({ children }) {
 
           // 2. 세션이 없다면 즉시 로그인 시도
           if (!data.session) {
-            console.log('즉시 로그인 시도...');
+            if (DEBUG) {
+              console.log('즉시 로그인 시도...');
+            }
             
             // 짧은 지연 후 로그인 시도
             await new Promise(resolve => setTimeout(resolve, 1500));
             
             // 여러 번 로그인 시도
             for (let attempt = 1; attempt <= 5; attempt++) {
-              console.log(`로그인 시도 ${attempt}/5...`);
+              if (DEBUG) {
+                console.log(`로그인 시도 ${attempt}/5...`);
+              }
               
               try {
                 const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
@@ -183,7 +191,9 @@ export function AuthProvider({ children }) {
                 });
                 
                 if (!loginError && loginData.user) {
-                  console.log('로그인 성공!');
+                  if (DEBUG) {
+                    console.log('로그인 성공!');
+                  }
                   setUser(loginData.user);
                   
                   // 로그인 성공 후 프로필 재확인
@@ -198,9 +208,13 @@ export function AuthProvider({ children }) {
                   return { data: loginData, error: null };
                 }
                 
-                console.log(`로그인 시도 ${attempt} 실패:`, loginError?.message);
+                if (DEBUG) {
+                  console.log(`로그인 시도 ${attempt} 실패:`, loginError?.message);
+                }
               } catch (loginException) {
-                console.log(`로그인 시도 ${attempt} 예외:`, loginException.message);
+                if (DEBUG) {
+                  console.log(`로그인 시도 ${attempt} 예외:`, loginException.message);
+                }
               }
               
               // 마지막 시도가 아니라면 대기
@@ -210,7 +224,9 @@ export function AuthProvider({ children }) {
             }
             
             // 모든 시도 실패 시에도 성공으로 처리 (수동 로그인 안내)
-            console.log('자동 로그인 실패, 수동 로그인 필요');
+            if (DEBUG) {
+              console.log('자동 로그인 실패, 수동 로그인 필요');
+            }
             return { 
               data, 
               error: null,
@@ -219,7 +235,9 @@ export function AuthProvider({ children }) {
             };
           } else {
             // 세션이 이미 있다면 바로 설정
-            console.log('세션이 이미 존재함');
+            if (DEBUG) {
+              console.log('세션이 이미 존재함');
+            }
             setUser(data.user);
             return { data, error: null };
           }
@@ -283,7 +301,9 @@ export function AuthProvider({ children }) {
             .single();
 
           if (!profile) {
+          if (DEBUG) {
             console.log('프로필이 없음, 생성 시도...');
+          }
             await createUserProfile(
               data.user.id,
               data.user.user_metadata?.full_name || 'User',
@@ -308,13 +328,17 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     try {
-      console.log('로그아웃 시도');
+      if (DEBUG) {
+        console.log('로그아웃 시도');
+      }
       const { error } = await supabase.auth.signOut();
       if (error) {
         logError('로그아웃 오류:', error);
         throw error;
       }
-      console.log('로그아웃 성공');
+      if (DEBUG) {
+        console.log('로그아웃 성공');
+      }
     } catch (error) {
       logError('로그아웃 실패:', error);
     }
