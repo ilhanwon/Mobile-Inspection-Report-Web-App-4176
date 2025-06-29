@@ -1,115 +1,98 @@
 import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Header from './components/Header';
-import Navigation from './components/Navigation';
-import LoginForm from './components/auth/LoginForm';
-import SiteList from './components/SiteList';
+import { InspectionProvider } from './context/InspectionContext';
+import ImprovedSiteList from './components/ImprovedSiteList';
 import CreateSite from './components/CreateSite';
 import SiteDetail from './components/SiteDetail';
 import CreateInspection from './components/CreateInspection';
-import InspectionDetail from './components/InspectionDetail';
-import { InspectionProvider } from './context/InspectionContext';
+import ImprovedInspectionDetail from './components/ImprovedInspectionDetail';
+import ImprovedNavigation from './components/ImprovedNavigation';
 import './App.css';
 
-function AppContent() {
-  const { user, loading } = useAuth();
-
-  // AgentFlow 챗봇 스크립트를 앱 시작과 동시에 로드
+function App() {
+  // 뷰포트 높이 최적화
   useEffect(() => {
-    if (!user) return; // 로그인한 사용자만 챗봇 로드
-
-    // 즉시 스크립트 로드
-    const loadChatbot = () => {
-      const script = document.createElement('script');
-      script.id = 'agenticflow-agent-global';
-      script.src = 'https://agenticflow.ai/scripts/agent.js';
-      script.setAttribute('data-agent-id', '6cbf1565-408b-46df-99e1-155b96997f8d');
-      script.async = true;
-      script.onload = () => {
-        console.log('AgentFlow 챗봇 로드 완료');
-        // 챗봇 버튼이 즉시 나타나도록 설정
-        const ensureChatbotVisible = () => {
-          const chatButton = document.getElementById('agenticflow-chat-bubble-button');
-          if (chatButton) {
-            chatButton.style.display = 'flex';
-            chatButton.style.position = 'fixed';
-            chatButton.style.bottom = '5rem'; // 네비게이션 위에 표시
-            chatButton.style.right = '1rem';
-            chatButton.style.zIndex = '9999';
-            chatButton.style.opacity = '1';
-            chatButton.style.visibility = 'visible';
-            console.log('챗봇 버튼 표시됨');
-          } else {
-            // 버튼이 아직 생성되지 않았다면 다시 시도
-            setTimeout(ensureChatbotVisible, 100);
-          }
-        };
-        // 즉시 실행하고, 추가로 몇 번 더 확인
-        ensureChatbotVisible();
-        setTimeout(ensureChatbotVisible, 500);
-        setTimeout(ensureChatbotVisible, 1000);
-      };
-      script.onerror = () => {
-        console.error('AgentFlow 챗봇 로드 실패');
-      };
-      document.head.appendChild(script);
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
 
-    // DOM이 준비되면 즉시 로드
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', loadChatbot);
-    } else {
-      loadChatbot();
-    }
+    // 초기 설정
+    setVH();
+
+    // 리사이즈 시 재설정
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+
+    // 네비게이션 강제 표시 보장
+    const ensureNavigationVisible = () => {
+      setTimeout(() => {
+        const navElement = document.querySelector('.navigation-container');
+        if (navElement) {
+          navElement.style.position = 'fixed';
+          navElement.style.bottom = '0';
+          navElement.style.zIndex = '99999';
+          navElement.style.display = 'block';
+          navElement.style.visibility = 'visible';
+          navElement.style.opacity = '1';
+          navElement.style.transform = 'none';
+        }
+      }, 100);
+    };
+
+    // 다양한 이벤트에서 네비게이션 가시성 보장
+    ensureNavigationVisible();
+    window.addEventListener('load', ensureNavigationVisible);
+    window.addEventListener('resize', ensureNavigationVisible);
+    window.addEventListener('scroll', ensureNavigationVisible);
+    document.addEventListener('DOMContentLoaded', ensureNavigationVisible);
 
     return () => {
-      document.removeEventListener('DOMContentLoaded', loadChatbot);
+      window.removeEventListener('resize', setVH);
+      window.removeEventListener('orientationchange', setVH);
+      window.removeEventListener('load', ensureNavigationVisible);
+      window.removeEventListener('resize', ensureNavigationVisible);
+      window.removeEventListener('scroll', ensureNavigationVisible);
+      document.removeEventListener('DOMContentLoaded', ensureNavigationVisible);
     };
-  }, [user]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginForm />;
-  }
+  }, []);
 
   return (
     <InspectionProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <main className="pb-24 safe-area-inset"> {/* 네비게이션 높이만큼 여백 추가 */}
-          <Routes>
-            <Route path="/" element={<Navigate to="/sites" replace />} />
-            <Route path="/sites" element={<SiteList />} />
-            <Route path="/create-site" element={<CreateSite />} />
-            <Route path="/site/:id" element={<SiteDetail />} />
-            <Route path="/create-inspection" element={<CreateInspection />} />
-            <Route path="/inspection/:id" element={<InspectionDetail />} />
-          </Routes>
-        </main>
-        <Navigation />
-      </div>
-    </InspectionProvider>
-  );
-}
-
-function App() {
-  return (
-    <AuthProvider>
       <Router>
-        <AppContent />
+        <div 
+          className="min-h-screen bg-gray-50 relative"
+          style={{
+            minHeight: 'calc(var(--vh, 1vh) * 100)',
+            position: 'relative',
+            overflow: 'hidden auto',
+          }}
+        >
+          {/* 메인 콘텐츠 */}
+          <main 
+            className="main-content-with-nav safe-area-inset"
+            style={{
+              paddingBottom: '120px',
+              minHeight: 'calc(var(--vh, 1vh) * 100)',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            <Routes>
+              <Route path="/" element={<Navigate to="/sites" replace />} />
+              <Route path="/sites" element={<ImprovedSiteList />} />
+              <Route path="/create-site" element={<CreateSite />} />
+              <Route path="/site/:id" element={<SiteDetail />} />
+              <Route path="/create-inspection" element={<CreateInspection />} />
+              <Route path="/inspection/:id" element={<ImprovedInspectionDetail />} />
+            </Routes>
+          </main>
+
+          {/* 완전 고정 네비게이션 */}
+          <ImprovedNavigation />
+        </div>
       </Router>
-    </AuthProvider>
+    </InspectionProvider>
   );
 }
 

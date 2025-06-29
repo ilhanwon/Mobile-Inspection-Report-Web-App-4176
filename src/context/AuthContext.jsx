@@ -44,23 +44,28 @@ export function AuthProvider({ children }) {
   }, []);
 
   // 안전한 프로필 생성 함수
-  const createUserProfile = async (userId, fullName, email) => {
+  const ensureUserProfile = async (userId, fullName, email) => {
     try {
-      console.log('프로필 생성 시도:', { userId, fullName, email });
+      console.log('프로필 확인/생성 시도:', { userId, fullName, email });
 
       // 먼저 프로필이 이미 존재하는지 확인
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('user_profiles_fire_v2')
-        .select('id')
+        .select('id, full_name, email')
         .eq('id', userId)
         .single();
 
       if (existingProfile) {
-        console.log('프로필이 이미 존재함');
-        return { success: true, isExisting: true };
+        console.log('프로필이 이미 존재함:', existingProfile);
+        return { success: true, data: existingProfile };
       }
 
-      // 프로필 생성 시도
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('프로필 조회 오류:', fetchError);
+      }
+
+      // 프로필이 없으면 생성
+      console.log('프로필 생성 중...');
       const { data, error } = await supabase
         .from('user_profiles_fire_v2')
         .insert([{
@@ -75,10 +80,18 @@ export function AuthProvider({ children }) {
       if (error) {
         console.error('프로필 생성 오류:', error);
         
-        // 중복 키 오류인 경우 정상으로 처리
+        // 중복 키 오류인 경우 다시 조회
         if (error.code === '23505' || error.message.includes('duplicate key')) {
-          console.log('프로필이 이미 존재함 (중복 키)');
-          return { success: true, isExisting: true };
+          console.log('중복 키 오류, 기존 프로필 조회 중...');
+          const { data: retryData } = await supabase
+            .from('user_profiles_fire_v2')
+            .select('*')
+            .eq('id', userId)
+            .single();
+          
+          if (retryData) {
+            return { success: true, data: retryData };
+          }
         }
         
         return { success: false, error: error.message };
@@ -87,7 +100,7 @@ export function AuthProvider({ children }) {
       console.log('프로필 생성 성공:', data);
       return { success: true, data };
     } catch (error) {
-      console.error('프로필 생성 예외:', error);
+      console.error('프로필 처리 예외:', error);
       return { success: false, error: error.message };
     }
   };
@@ -96,24 +109,40 @@ export function AuthProvider({ children }) {
     try {
       console.log('회원가입 시도:', { email, fullName });
 
-      // 클라이언트 측 이메일 유효성 검사
+      // 입력값 검증
       if (!isValidEmail(email)) {
         throw new Error('올바른 이메일 주소를 입력해주세요. (예: user@example.com)');
       }
 
-      // 비밀번호 길이 확인
       if (password.length < 6) {
         throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
       }
 
-      // 회원가입 (이메일 확인 비활성화)
+      if (!fullName || !fullName.trim()) {
+        throw new Error('이름을 입력해주세요.');
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanFullName = fullName.trim();
+
+      // 1. 기존 사용자 확인
+      console.log('기존 사용자 확인 중...');
+      const { data: existingUser } = await supabase.auth.admin.getUserByEmail?.(cleanEmail) || {};
+      
+      if (existingUser?.user) {
+        throw new Error('이미 등록된 이메일입니다. 로그인을 시도해주세요.');
+      }
+
+      // 2. 회원가입 시도
+      console.log('회원가입 진행 중...');
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: cleanFullName,
           },
+          emailRedirectTo: undefined, // 이메일 확인 링크 비활성화
         }
       });
 
@@ -129,102 +158,102 @@ export function AuthProvider({ children }) {
           throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
         } else if (error.message.includes('Signup is disabled')) {
           throw new Error('현재 회원가입이 비활성화되어 있습니다.');
+        } else if (error.message.includes('Database error')) {
+          throw new Error('서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
         } else {
           throw new Error(`회원가입에 실패했습니다: ${error.message}`);
         }
       }
 
-      console.log('회원가입 성공:', data);
+      console.log('회원가입 결과:', { user: data.user?.id, session: !!data.session });
 
-      // 사용자가 생성되었으면 프로필 생성 및 로그인 시도
-      if (data.user) {
-        try {
-          // 1. 프로필 생성 (트리거가 실패할 수 있으므로 수동으로도 시도)
-          const profileResult = await createUserProfile(
-            data.user.id, 
-            fullName, 
-            email.trim().toLowerCase()
-          );
-
-          if (!profileResult.success && !profileResult.isExisting) {
-            console.warn('프로필 생성 실패, 하지만 계속 진행:', profileResult.error);
-          }
-
-          // 2. 세션이 없다면 즉시 로그인 시도
-          if (!data.session) {
-            console.log('즉시 로그인 시도...');
-            
-            // 짧은 지연 후 로그인 시도
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            // 여러 번 로그인 시도
-            for (let attempt = 1; attempt <= 5; attempt++) {
-              console.log(`로그인 시도 ${attempt}/5...`);
-              
-              try {
-                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-                  email: email.trim().toLowerCase(),
-                  password,
-                });
-                
-                if (!loginError && loginData.user) {
-                  console.log('로그인 성공!');
-                  setUser(loginData.user);
-                  
-                  // 로그인 성공 후 프로필 재확인
-                  if (!profileResult.success) {
-                    await createUserProfile(
-                      loginData.user.id, 
-                      fullName, 
-                      email.trim().toLowerCase()
-                    );
-                  }
-                  
-                  return { data: loginData, error: null };
-                }
-                
-                console.log(`로그인 시도 ${attempt} 실패:`, loginError?.message);
-              } catch (loginException) {
-                console.log(`로그인 시도 ${attempt} 예외:`, loginException.message);
-              }
-              
-              // 마지막 시도가 아니라면 대기
-              if (attempt < 5) {
-                await new Promise(resolve => setTimeout(resolve, 2000));
-              }
-            }
-            
-            // 모든 시도 실패 시에도 성공으로 처리 (수동 로그인 안내)
-            console.log('자동 로그인 실패, 수동 로그인 필요');
-            return { 
-              data, 
-              error: null,
-              needsManualLogin: true,
-              message: '회원가입이 완료되었습니다. 로그인 탭에서 로그인해주세요.'
-            };
-          } else {
-            // 세션이 이미 있다면 바로 설정
-            console.log('세션이 이미 존재함');
-            setUser(data.user);
-            return { data, error: null };
-          }
-        } catch (profileError) {
-          console.error('프로필 생성/로그인 중 예외:', profileError);
-          
-          // 프로필 생성 실패해도 계정은 생성되었으므로 성공으로 처리
-          return { 
-            data, 
-            error: null,
-            needsManualLogin: true,
-            message: '회원가입이 완료되었습니다. 로그인 탭에서 로그인해주세요.'
-          };
-        }
+      if (!data.user) {
+        throw new Error('사용자 생성에 실패했습니다.');
       }
 
-      return { data, error: null };
+      // 3. 프로필 확인/생성
+      console.log('프로필 처리 중...');
+      const profileResult = await ensureUserProfile(
+        data.user.id, 
+        cleanFullName, 
+        cleanEmail
+      );
+
+      if (!profileResult.success) {
+        console.warn('프로필 생성 실패, 하지만 계속 진행:', profileResult.error);
+      }
+
+      // 4. 세션이 있으면 즉시 로그인 완료
+      if (data.session) {
+        console.log('즉시 로그인 완료');
+        setUser(data.user);
+        return { 
+          data, 
+          error: null,
+          success: true,
+          message: '회원가입이 완료되고 자동으로 로그인되었습니다.'
+        };
+      }
+
+      // 5. 세션이 없으면 자동 로그인 시도
+      console.log('자동 로그인 시도 시작...');
+      
+      // 잠시 대기 후 로그인 시도
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 최대 3번 로그인 시도
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        console.log(`자동 로그인 시도 ${attempt}/3...`);
+        
+        try {
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          
+          if (!loginError && loginData.user) {
+            console.log('자동 로그인 성공!');
+            setUser(loginData.user);
+            
+            // 로그인 후 프로필 재확인
+            await ensureUserProfile(loginData.user.id, cleanFullName, cleanEmail);
+            
+            return { 
+              data: loginData, 
+              error: null,
+              success: true,
+              message: '회원가입이 완료되고 자동으로 로그인되었습니다.'
+            };
+          }
+          
+          console.log(`자동 로그인 시도 ${attempt} 실패:`, loginError?.message);
+        } catch (loginException) {
+          console.error(`자동 로그인 시도 ${attempt} 예외:`, loginException);
+        }
+        
+        // 마지막 시도가 아니라면 잠시 대기
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+      
+      // 자동 로그인 실패 시 수동 로그인 안내
+      console.log('자동 로그인 실패, 수동 로그인 필요');
+      return { 
+        data, 
+        error: null,
+        needsManualLogin: true,
+        success: true,
+        message: '회원가입이 완료되었습니다. 아래에서 로그인해주세요.'
+      };
+
     } catch (error) {
-      console.error('회원가입 실패:', error);
-      return { data: null, error };
+      console.error('회원가입 최종 실패:', error);
+      return { 
+        data: null, 
+        error,
+        success: false
+      };
     }
   };
 
@@ -232,13 +261,19 @@ export function AuthProvider({ children }) {
     try {
       console.log('로그인 시도:', email);
 
-      // 클라이언트 측 이메일 유효성 검사
+      // 입력값 검증
       if (!isValidEmail(email)) {
         throw new Error('올바른 이메일 주소를 입력해주세요.');
       }
 
+      if (!password || password.length < 1) {
+        throw new Error('비밀번호를 입력해주세요.');
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password,
       });
 
@@ -256,30 +291,19 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // 로그인 성공 시 프로필 확인 및 생성
+      // 로그인 성공 시 프로필 확인
       if (data.user) {
-        try {
-          const { data: profile } = await supabase
-            .from('user_profiles_fire_v2')
-            .select('id')
-            .eq('id', data.user.id)
-            .single();
-
-          if (!profile) {
-            console.log('프로필이 없음, 생성 시도...');
-            await createUserProfile(
-              data.user.id,
-              data.user.user_metadata?.full_name || 'User',
-              data.user.email
-            );
-          }
-        } catch (profileError) {
-          console.warn('프로필 확인/생성 중 오류:', profileError);
-          // 프로필 오류가 있어도 로그인은 성공으로 처리
-        }
+        console.log('로그인 성공, 프로필 확인 중...');
+        
+        // 프로필이 없으면 생성
+        await ensureUserProfile(
+          data.user.id,
+          data.user.user_metadata?.full_name || 'User',
+          data.user.email
+        );
       }
 
-      console.log('로그인 성공:', data.user?.email);
+      console.log('로그인 완료:', data.user?.email);
       return { data, error: null };
     } catch (error) {
       console.error('로그인 실패:', error);

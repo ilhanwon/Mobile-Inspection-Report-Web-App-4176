@@ -4,11 +4,10 @@ import SafeIcon from '../common/SafeIcon';
 import { useInspection } from '../context/InspectionContext';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiX, FiCheck, FiMapPin, FiList, FiEdit3, FiClock, FiChevronDown, FiChevronUp } = FiIcons;
+const { FiX, FiCheck, FiMapPin, FiList, FiEdit3, FiClock, FiChevronDown } = FiIcons;
 
 function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
-  const { getSortedIssueHistory, getSortedLocationHistory } = useInspection();
-  
+  const { getSortedIssueHistory, getSortedLocationHistory, inspections, sites } = useInspection();
   const [formData, setFormData] = useState({
     facilityType: editingIssue?.facility_type || '소화설비',
     description: editingIssue?.description || '',
@@ -20,6 +19,13 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
   const [showLocationHistory, setShowLocationHistory] = useState(false);
   const [isCustomInput, setIsCustomInput] = useState(!!editingIssue?.description);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 현재 점검 정보 가져오기 (URL에서 inspection ID 추출)
+  const currentInspectionId = window.location.pathname.includes('/inspection/') 
+    ? window.location.pathname.split('/inspection/')[1] 
+    : null;
+  const currentInspection = inspections.find(i => i.id === currentInspectionId);
+  const currentSite = currentInspection ? sites.find(s => s.id === currentInspection.site_id) : null;
 
   // 설비명과 권고사항 정의
   const facilityTypes = [
@@ -39,47 +45,34 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
   // 최근 위치를 기본값으로 설정 (편집 모드가 아닐 때만)
   useEffect(() => {
     if (!editingIssue && locationHistory.length > 0 && !formData.location) {
-      setFormData(prev => ({
-        ...prev,
-        location: locationHistory[0].location
-      }));
+      setFormData(prev => ({ ...prev, location: locationHistory[0].location }));
     }
   }, [locationHistory, editingIssue, formData.location]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleHistorySelect = (description) => {
-    setFormData(prev => ({
-      ...prev,
-      description
-    }));
+    setFormData(prev => ({ ...prev, description }));
     setShowHistory(false);
     setIsCustomInput(false);
   };
 
   const handleLocationSelect = (location) => {
-    setFormData(prev => ({
-      ...prev,
-      location
-    }));
+    setFormData(prev => ({ ...prev, location }));
     setShowLocationHistory(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.description.trim() || !formData.location.trim()) {
       alert('불량내용과 위치를 입력해주세요.');
       return;
     }
 
     setIsSubmitting(true);
-    
     try {
       await onSubmit(formData);
     } catch (error) {
@@ -97,40 +90,45 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
     >
-      {/* 헤더 */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-4 z-10">
+      {/* 헤더 - 더 간소화 */}
+      <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <button
             onClick={onCancel}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors duration-200"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
           >
-            <SafeIcon icon={FiX} className="w-6 h-6 text-gray-600" />
+            <SafeIcon icon={FiX} className="w-5 h-5 text-gray-600" />
           </button>
           
-          <div className="text-center">
-            <h1 className="text-lg font-bold text-gray-900">
+          <div className="flex-1 text-center mx-3">
+            <h1 className="text-base font-bold text-gray-900">
               {editingIssue ? '지적사항 수정' : '지적사항 추가'}
             </h1>
-            <p className="text-sm text-gray-500">불량 내용을 입력해주세요</p>
+            {/* 더 간소화된 점검 정보 */}
+            {currentSite && currentInspection && (
+              <span className="text-xs text-gray-500 truncate block max-w-xs mx-auto">
+                {currentSite.name} • {currentInspection.inspector}
+              </span>
+            )}
           </div>
 
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !formData.description.trim() || !formData.location.trim()}
-            className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+            className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all duration-200 ${
               isSubmitting || !formData.description.trim() || !formData.location.trim()
                 ? 'bg-gray-200 text-gray-400'
                 : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
             }`}
           >
-            {isSubmitting ? '저장중...' : (editingIssue ? '수정' : '추가')}
+            {isSubmitting ? '저장중' : (editingIssue ? '수정' : '추가')}
           </button>
         </div>
       </div>
 
       {/* 메인 콘텐츠 */}
-      <div className="flex-1 overflow-y-auto">
-        <form onSubmit={handleSubmit} className="p-4 space-y-4 pb-8">
+      <div className="flex-1 overflow-y-auto pb-20">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* 설비명 선택 - 컴팩트 버전 */}
           <motion.div
             className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
@@ -142,14 +140,13 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
               <label className="block text-sm font-semibold text-gray-700">
                 설비명 *
               </label>
-              
               <div className="relative">
                 <select
                   value={formData.facilityType}
                   onChange={(e) => handleInputChange('facilityType', e.target.value)}
                   className={`px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium appearance-none bg-white min-w-32 ${
-                    formData.facilityType === '권고사항' 
-                      ? 'text-green-700 bg-green-50 border-green-200' 
+                    formData.facilityType === '권고사항'
+                      ? 'text-green-700 bg-green-50 border-green-200'
                       : 'text-gray-900'
                   }`}
                   required
@@ -160,7 +157,6 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
                     </option>
                   ))}
                 </select>
-                
                 {/* 커스텀 드롭다운 아이콘 */}
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                   <SafeIcon icon={FiChevronDown} className="w-4 h-4 text-gray-400" />
@@ -201,9 +197,7 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
                     type="button"
                     onClick={() => setShowHistory(!showHistory)}
                     className={`flex items-center space-x-1 px-2 py-1 text-xs rounded-lg transition-colors duration-200 ${
-                      showHistory 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      showHistory ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     <SafeIcon icon={FiList} className="w-3 h-3" />
@@ -216,9 +210,7 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
                       setShowHistory(false);
                     }}
                     className={`flex items-center space-x-1 px-2 py-1 text-xs rounded-lg transition-colors duration-200 ${
-                      isCustomInput 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      isCustomInput ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     <SafeIcon icon={FiEdit3} className="w-3 h-3" />
@@ -265,8 +257,8 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 placeholder={
-                  formData.facilityType === '권고사항' 
-                    ? "권고내용을 구체적으로 입력하세요" 
+                  formData.facilityType === '권고사항'
+                    ? "권고내용을 구체적으로 입력하세요"
                     : "불량내용을 구체적으로 입력하세요"
                 }
                 rows={3}
@@ -296,9 +288,7 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
                       type="button"
                       onClick={() => setShowLocationHistory(!showLocationHistory)}
                       className={`flex items-center space-x-1 px-2 py-1 text-xs rounded-lg transition-colors duration-200 ${
-                        showLocationHistory 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        showLocationHistory ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       <SafeIcon icon={FiClock} className="w-3 h-3" />
@@ -353,7 +343,7 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
                   type="text"
                   value={formData.detailLocation}
                   onChange={(e) => handleInputChange('detailLocation', e.target.value)}
-                  placeholder="예: 3층, 지하1층"
+                  placeholder="예: 3층,지하1층"
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
                 />
               </div>
@@ -385,9 +375,7 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
           >
             <SafeIcon icon={FiCheck} className="w-4 h-4" />
             <span>
-              {isSubmitting ? '저장 중...' : 
-               editingIssue ? '수정 완료' : 
-               formData.facilityType === '권고사항' ? '권고사항 추가' : '지적사항 추가'}
+              {isSubmitting ? '저장 중...' : editingIssue ? '수정 완료' : formData.facilityType === '권고사항' ? '권고사항 추가' : '지적사항 추가'}
             </span>
           </button>
         </div>

@@ -2,7 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import SafeIcon from '../common/SafeIcon';
 import { useInspection } from '../context/InspectionContext';
-import { generatePDF } from '../utils/pdfUtils';
 import { formatDateOnly } from '../utils/dateUtils';
 import * as FiIcons from 'react-icons/fi';
 
@@ -10,15 +9,6 @@ const { FiX, FiDownload, FiShare, FiFileText } = FiIcons;
 
 function ReportModal({ inspection, site, onClose }) {
   const { generateReportContent, facilityOrder } = useInspection();
-
-  const handleExportPDF = () => {
-    try {
-      generatePDF(inspection, site);
-    } catch (error) {
-      console.error('PDF 생성 오류:', error);
-      alert('PDF 생성 중 오류가 발생했습니다.');
-    }
-  };
 
   const handleExportText = () => {
     const reportContent = generateReportContent(inspection, site);
@@ -35,7 +25,7 @@ function ReportModal({ inspection, site, onClose }) {
 
   const handleShare = async () => {
     const reportContent = generateReportContent(inspection, site);
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -55,12 +45,12 @@ function ReportModal({ inspection, site, onClose }) {
     }
   };
 
-  // 설비별 지적사항 그룹핑 및 정렬 - 상세위치 콤마 구분
+  // 설비별 지적사항 그룹핑 및 정렬 - 상세위치 공백으로 구분
   const groupedIssues = (inspection.issues || []).reduce((acc, issue) => {
     if (!acc[issue.facility_type]) {
       acc[issue.facility_type] = {};
     }
-
+    
     const key = `${issue.description}_${issue.location}`;
     if (!acc[issue.facility_type][key]) {
       acc[issue.facility_type][key] = {
@@ -146,10 +136,9 @@ function ReportModal({ inspection, site, onClose }) {
                     <div className="space-y-2">
                       {facilityIssues.map((issue, index) => {
                         let locationText = issue.location;
-                        
-                        // 상세위치들을 콤마로 구분하여 연결
+                        // 상세위치들을 공백으로 구분하여 연결
                         if (issue.detailLocations.length > 0) {
-                          locationText += ` (${issue.detailLocations.join(', ')})`;
+                          locationText += ` ${issue.detailLocations.join(', ')}`;
                         }
 
                         return (
@@ -190,7 +179,7 @@ function ReportModal({ inspection, site, onClose }) {
           )}
         </div>
 
-        {/* 액션 버튼 */}
+        {/* 액션 버튼 - PDF 제거 */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-2xl">
           <div className="flex space-x-3">
             <button
@@ -206,13 +195,6 @@ function ReportModal({ inspection, site, onClose }) {
             >
               <SafeIcon icon={FiDownload} className="w-4 h-4" />
               <span>텍스트</span>
-            </button>
-            <button
-              onClick={handleExportPDF}
-              className="flex-1 flex items-center justify-center space-x-2 py-3 px-4 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors duration-200"
-            >
-              <SafeIcon icon={FiDownload} className="w-4 h-4" />
-              <span>PDF</span>
             </button>
           </div>
         </div>

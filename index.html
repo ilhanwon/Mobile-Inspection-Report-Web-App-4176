@@ -1,17 +1,90 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
-    <meta name="theme-color" content="#3b82f6" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <title>현장 점검 지적사항 작성</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-    <script id="agenticflow-agent" src="https://agenticflow.ai/scripts/agent.js" data-agent-id="6cbf1565-408b-46df-99e1-155b96997f8d"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#3b82f6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>현장 점검 지적사항 작성</title>
+  <style>
+    /* 초기 로딩 시 네비게이션 영역 확보 */
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      position: relative;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+    
+    #root {
+      position: relative;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      overflow-x: hidden;
+    }
+    
+    /* 네비게이션 영역 미리 확보 */
+    body {
+      padding-bottom: 0 !important;
+    }
+    
+    /* iOS Safari 최적화 */
+    @supports (-webkit-touch-callout: none) {
+      body {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+  <script>
+    // 네비게이션 가시성 보장 스크립트
+    document.addEventListener('DOMContentLoaded', function() {
+      // 뷰포트 높이 설정
+      function setVH() {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', vh + 'px');
+      }
+      
+      setVH();
+      window.addEventListener('resize', setVH);
+      window.addEventListener('orientationchange', setVH);
+      
+      // 네비게이션 강제 표시 함수
+      function ensureNavigationVisible() {
+        setTimeout(function() {
+          const navElement = document.querySelector('.navigation-container');
+          if (navElement) {
+            navElement.style.position = 'fixed';
+            navElement.style.bottom = '0';
+            navElement.style.left = '0';
+            navElement.style.right = '0';
+            navElement.style.zIndex = '99999';
+            navElement.style.display = 'block';
+            navElement.style.visibility = 'visible';
+            navElement.style.opacity = '1';
+            navElement.style.transform = 'none';
+            navElement.style.pointerEvents = 'auto';
+          }
+        }, 50);
+      }
+      
+      // 주기적으로 네비게이션 가시성 확인
+      setInterval(ensureNavigationVisible, 1000);
+      
+      // 이벤트 기반 가시성 보장
+      window.addEventListener('load', ensureNavigationVisible);
+      window.addEventListener('scroll', ensureNavigationVisible);
+      window.addEventListener('resize', ensureNavigationVisible);
+      window.addEventListener('focus', ensureNavigationVisible);
+      document.addEventListener('visibilitychange', ensureNavigationVisible);
+    });
+  </script>
+</body>
 </html>

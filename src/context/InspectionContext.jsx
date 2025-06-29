@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
-import supabase from '../lib/supabase';
 import { formatDateOnly } from '../utils/dateUtils';
 
 const InspectionContext = createContext();
@@ -95,7 +94,7 @@ function inspectionReducer(state, action) {
 export function InspectionProvider({ children }) {
   const [state, dispatch] = useReducer(inspectionReducer, initialState);
 
-  // 설비별 정렬 순서 정의 (권고사항 추가)
+  // 설비별 정렬 순서 정의
   const facilityOrder = useMemo(() => ({
     '소화설비': 1,
     '경보설비': 2,
@@ -107,99 +106,48 @@ export function InspectionProvider({ children }) {
     '기타': 8
   }), []);
 
-  // 데이터 로드
+  // 데이터 로드 (로컬 스토리지만 사용)
   useEffect(() => {
-    loadSites();
-    loadInspections();
-    loadIssueHistory();
-    loadLocationHistory();
+    loadLocalData();
   }, []);
 
-  const loadSites = async () => {
+  const loadLocalData = () => {
     try {
-      const { data, error } = await supabase
-        .from('sites_fire_inspection_v2')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const sites = JSON.parse(localStorage.getItem('fire_inspection_sites') || '[]');
+      const inspections = JSON.parse(localStorage.getItem('fire_inspection_inspections') || '[]');
+      const issueHistory = JSON.parse(localStorage.getItem('fire_inspection_issue_history') || '[]');
+      const locationHistory = JSON.parse(localStorage.getItem('fire_inspection_location_history') || '[]');
 
-      if (error) throw error;
-      dispatch({ type: actionTypes.LOAD_SITES, payload: data || [] });
+      dispatch({ type: actionTypes.LOAD_SITES, payload: sites });
+      dispatch({ type: actionTypes.LOAD_INSPECTIONS, payload: inspections });
+      dispatch({ type: actionTypes.LOAD_ISSUE_HISTORY, payload: issueHistory });
+      dispatch({ type: actionTypes.LOAD_LOCATION_HISTORY, payload: locationHistory });
     } catch (error) {
-      console.error('Error loading sites:', error);
-      dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
+      console.error('Error loading local data:', error);
     }
   };
 
-  const loadInspections = async () => {
+  const saveToLocalStorage = (key, data) => {
     try {
-      const { data, error } = await supabase
-        .from('inspections_fire_v2')
-        .select(`
-          *,
-          site:sites_fire_inspection_v2(*),
-          issues:issues_fire_v2(*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      dispatch({ type: actionTypes.LOAD_INSPECTIONS, payload: data || [] });
+      localStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
-      console.error('Error loading inspections:', error);
-      dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
-    }
-  };
-
-  const loadIssueHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('issue_history_fire_v2')
-        .select('*')
-        .order('count', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      dispatch({ type: actionTypes.LOAD_ISSUE_HISTORY, payload: data || [] });
-    } catch (error) {
-      console.error('Error loading issue history:', error);
-    }
-  };
-
-  const loadLocationHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('location_history_fire_v2')
-        .select('*')
-        .order('last_used', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      dispatch({ type: actionTypes.LOAD_LOCATION_HISTORY, payload: data || [] });
-    } catch (error) {
-      console.error('Error loading location history:', error);
+      console.error('Error saving to localStorage:', error);
     }
   };
 
   const createSite = async (siteData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      const newSite = {
+        ...siteData,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString()
+      };
 
-      // 데이터 정리
-      const cleanedData = { ...siteData };
-      Object.keys(cleanedData).forEach(key => {
-        if (cleanedData[key] === '') {
-          cleanedData[key] = null;
-        }
-      });
-
-      const { data, error } = await supabase
-        .from('sites_fire_inspection_v2')
-        .insert([cleanedData])
-        .select()
-        .single();
-
-      if (error) throw error;
-      dispatch({ type: actionTypes.ADD_SITE, payload: data });
-      return data;
+      const updatedSites = [newSite, ...state.sites];
+      saveToLocalStorage('fire_inspection_sites', updatedSites);
+      dispatch({ type: actionTypes.ADD_SITE, payload: newSite });
+      return newSite;
     } catch (error) {
       console.error('Error creating site:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -212,44 +160,18 @@ export function InspectionProvider({ children }) {
   const updateSite = async (siteId, siteData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      const updatedSite = {
+        ...state.sites.find(s => s.id === siteId),
+        ...siteData,
+        updated_at: new Date().toISOString()
+      };
 
-      // 모든 필드 업데이트 허용
-      const allowedFields = [
-        'name', 
-        'address', 
-        'phone', 
-        'manager_name', 
-        'manager_phone', 
-        'manager_email', 
-        'approval_date', 
-        'notes'
-      ];
-      
-      const updateData = {};
-      
-      allowedFields.forEach(field => {
-        if (siteData[field] !== undefined) {
-          updateData[field] = siteData[field] === '' ? null : siteData[field];
-        }
-      });
-
-      console.log('Updating site with data:', updateData);
-
-      const { data, error } = await supabase
-        .from('sites_fire_inspection_v2')
-        .update(updateData)
-        .eq('id', siteId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-
-      console.log('Site updated successfully:', data);
-      dispatch({ type: actionTypes.UPDATE_SITE, payload: data });
-      return data;
+      const updatedSites = state.sites.map(site =>
+        site.id === siteId ? updatedSite : site
+      );
+      saveToLocalStorage('fire_inspection_sites', updatedSites);
+      dispatch({ type: actionTypes.UPDATE_SITE, payload: updatedSite });
+      return updatedSite;
     } catch (error) {
       console.error('Error updating site:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -261,13 +183,14 @@ export function InspectionProvider({ children }) {
 
   const deleteSite = async (siteId) => {
     try {
-      const { error } = await supabase
-        .from('sites_fire_inspection_v2')
-        .delete()
-        .eq('id', siteId);
+      const updatedSites = state.sites.filter(site => site.id !== siteId);
+      const updatedInspections = state.inspections.filter(inspection => inspection.site_id !== siteId);
 
-      if (error) throw error;
+      saveToLocalStorage('fire_inspection_sites', updatedSites);
+      saveToLocalStorage('fire_inspection_inspections', updatedInspections);
+
       dispatch({ type: actionTypes.DELETE_SITE, payload: siteId });
+      dispatch({ type: actionTypes.LOAD_INSPECTIONS, payload: updatedInspections });
     } catch (error) {
       console.error('Error deleting site:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -278,26 +201,20 @@ export function InspectionProvider({ children }) {
   const createInspection = async (inspectionData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      const newInspection = {
+        id: Date.now().toString(),
+        site_id: inspectionData.siteId,
+        inspector: inspectionData.inspector,
+        inspection_type: inspectionData.inspectionType,
+        notes: inspectionData.notes,
+        issues: [],
+        created_at: new Date().toISOString()
+      };
 
-      const { data, error } = await supabase
-        .from('inspections_fire_v2')
-        .insert([{
-          site_id: inspectionData.siteId,
-          inspector: inspectionData.inspector,
-          inspection_type: inspectionData.inspectionType,
-          notes: inspectionData.notes,
-        }])
-        .select(`
-          *,
-          site:sites_fire_inspection_v2(*),
-          issues:issues_fire_v2(*)
-        `)
-        .single();
-
-      if (error) throw error;
-
-      dispatch({ type: actionTypes.ADD_INSPECTION, payload: { ...data, issues: [] } });
-      return data;
+      const updatedInspections = [newInspection, ...state.inspections];
+      saveToLocalStorage('fire_inspection_inspections', updatedInspections);
+      dispatch({ type: actionTypes.ADD_INSPECTION, payload: newInspection });
+      return newInspection;
     } catch (error) {
       console.error('Error creating inspection:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -310,22 +227,18 @@ export function InspectionProvider({ children }) {
   const updateInspection = async (inspectionId, inspectionData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      const updatedInspection = {
+        ...state.inspections.find(i => i.id === inspectionId),
+        ...inspectionData,
+        updated_at: new Date().toISOString()
+      };
 
-      const { data, error } = await supabase
-        .from('inspections_fire_v2')
-        .update(inspectionData)
-        .eq('id', inspectionId)
-        .select(`
-          *,
-          site:sites_fire_inspection_v2(*),
-          issues:issues_fire_v2(*)
-        `)
-        .single();
-
-      if (error) throw error;
-
-      dispatch({ type: actionTypes.UPDATE_INSPECTION, payload: data });
-      return data;
+      const updatedInspections = state.inspections.map(inspection =>
+        inspection.id === inspectionId ? updatedInspection : inspection
+      );
+      saveToLocalStorage('fire_inspection_inspections', updatedInspections);
+      dispatch({ type: actionTypes.UPDATE_INSPECTION, payload: updatedInspection });
+      return updatedInspection;
     } catch (error) {
       console.error('Error updating inspection:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -337,25 +250,35 @@ export function InspectionProvider({ children }) {
 
   const addIssueToInspection = async (inspectionId, issueData) => {
     try {
-      const { data: issueResult, error: issueError } = await supabase
-        .from('issues_fire_v2')
-        .insert([{
-          inspection_id: inspectionId,
-          facility_type: issueData.facilityType,
-          description: issueData.description,
-          location: issueData.location,
-          detail_location: issueData.detailLocation,
-        }])
-        .select()
-        .single();
+      const inspection = state.inspections.find(i => i.id === inspectionId);
+      if (!inspection) throw new Error('Inspection not found');
 
-      if (issueError) throw issueError;
+      const newIssue = {
+        id: Date.now().toString(),
+        inspection_id: inspectionId,
+        facility_type: issueData.facilityType,
+        description: issueData.description,
+        location: issueData.location,
+        detail_location: issueData.detailLocation,
+        created_at: new Date().toISOString()
+      };
 
-      await updateIssueHistory(issueData.description);
-      await updateLocationHistory(issueData.location);
-      await loadInspections();
+      const updatedInspection = {
+        ...inspection,
+        issues: [...(inspection.issues || []), newIssue]
+      };
 
-      return issueResult;
+      const updatedInspections = state.inspections.map(insp =>
+        insp.id === inspectionId ? updatedInspection : insp
+      );
+
+      saveToLocalStorage('fire_inspection_inspections', updatedInspections);
+      dispatch({ type: actionTypes.UPDATE_INSPECTION, payload: updatedInspection });
+
+      updateIssueHistory(issueData.description);
+      updateLocationHistory(issueData.location);
+
+      return newIssue;
     } catch (error) {
       console.error('Error adding issue:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -365,25 +288,36 @@ export function InspectionProvider({ children }) {
 
   const updateIssue = async (issueId, issueData) => {
     try {
-      const { data, error } = await supabase
-        .from('issues_fire_v2')
-        .update({
-          facility_type: issueData.facilityType,
-          description: issueData.description,
-          location: issueData.location,
-          detail_location: issueData.detailLocation,
-        })
-        .eq('id', issueId)
-        .select()
-        .single();
+      const inspection = state.inspections.find(insp =>
+        insp.issues?.some(issue => issue.id === issueId)
+      );
+      if (!inspection) throw new Error('Issue not found');
 
-      if (error) throw error;
+      const updatedIssues = inspection.issues.map(issue =>
+        issue.id === issueId
+          ? {
+              ...issue,
+              facility_type: issueData.facilityType,
+              description: issueData.description,
+              location: issueData.location,
+              detail_location: issueData.detailLocation,
+              updated_at: new Date().toISOString()
+            }
+          : issue
+      );
 
-      await updateIssueHistory(issueData.description);
-      await updateLocationHistory(issueData.location);
-      await loadInspections();
+      const updatedInspection = { ...inspection, issues: updatedIssues };
+      const updatedInspections = state.inspections.map(insp =>
+        insp.id === inspection.id ? updatedInspection : insp
+      );
 
-      return data;
+      saveToLocalStorage('fire_inspection_inspections', updatedInspections);
+      dispatch({ type: actionTypes.UPDATE_INSPECTION, payload: updatedInspection });
+
+      updateIssueHistory(issueData.description);
+      updateLocationHistory(issueData.location);
+
+      return updatedIssues.find(issue => issue.id === issueId);
     } catch (error) {
       console.error('Error updating issue:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -391,79 +325,64 @@ export function InspectionProvider({ children }) {
     }
   };
 
-  const updateIssueHistory = async (description) => {
-    try {
-      const { data: existing } = await supabase
-        .from('issue_history_fire_v2')
-        .select('*')
-        .eq('description', description)
-        .single();
+  const updateIssueHistory = (description) => {
+    const existing = state.issueHistory.find(item => item.description === description);
+    let updatedHistory;
 
-      if (existing) {
-        await supabase
-          .from('issue_history_fire_v2')
-          .update({
-            count: existing.count + 1,
-            last_used: new Date().toISOString()
-          })
-          .eq('description', description);
-      } else {
-        await supabase
-          .from('issue_history_fire_v2')
-          .insert({
-            description,
-            count: 1,
-            last_used: new Date().toISOString(),
-          });
-      }
-
-      await loadIssueHistory();
-    } catch (error) {
-      console.error('Error updating issue history:', error);
+    if (existing) {
+      updatedHistory = state.issueHistory.map(item =>
+        item.description === description
+          ? { ...item, count: item.count + 1, last_used: new Date().toISOString() }
+          : item
+      );
+    } else {
+      updatedHistory = [
+        ...state.issueHistory,
+        { description, count: 1, last_used: new Date().toISOString() }
+      ];
     }
+
+    saveToLocalStorage('fire_inspection_issue_history', updatedHistory);
+    dispatch({ type: actionTypes.LOAD_ISSUE_HISTORY, payload: updatedHistory });
   };
 
-  const updateLocationHistory = async (location) => {
-    try {
-      const { data: existing } = await supabase
-        .from('location_history_fire_v2')
-        .select('*')
-        .eq('location', location)
-        .single();
+  const updateLocationHistory = (location) => {
+    const existing = state.locationHistory.find(item => item.location === location);
+    let updatedHistory;
 
-      if (existing) {
-        await supabase
-          .from('location_history_fire_v2')
-          .update({
-            count: existing.count + 1,
-            last_used: new Date().toISOString()
-          })
-          .eq('location', location);
-      } else {
-        await supabase
-          .from('location_history_fire_v2')
-          .insert({
-            location,
-            count: 1,
-            last_used: new Date().toISOString(),
-          });
-      }
-
-      await loadLocationHistory();
-    } catch (error) {
-      console.error('Error updating location history:', error);
+    if (existing) {
+      updatedHistory = state.locationHistory.map(item =>
+        item.location === location
+          ? { ...item, count: item.count + 1, last_used: new Date().toISOString() }
+          : item
+      );
+    } else {
+      updatedHistory = [
+        ...state.locationHistory,
+        { location, count: 1, last_used: new Date().toISOString() }
+      ];
     }
+
+    saveToLocalStorage('fire_inspection_location_history', updatedHistory);
+    dispatch({ type: actionTypes.LOAD_LOCATION_HISTORY, payload: updatedHistory });
   };
 
   const deleteIssue = async (inspectionId, issueId) => {
     try {
-      const { error } = await supabase
-        .from('issues_fire_v2')
-        .delete()
-        .eq('id', issueId);
+      const inspection = state.inspections.find(i => i.id === inspectionId);
+      if (!inspection) throw new Error('Inspection not found');
 
-      if (error) throw error;
-      await loadInspections();
+      const updatedInspection = {
+        ...inspection,
+        issues: inspection.issues.filter(issue => issue.id !== issueId)
+      };
+
+      const updatedInspections = state.inspections.map(insp =>
+        insp.id === inspectionId ? updatedInspection : insp
+      );
+
+      saveToLocalStorage('fire_inspection_inspections', updatedInspections);
+      dispatch({ type: actionTypes.UPDATE_INSPECTION, payload: updatedInspection });
     } catch (error) {
       console.error('Error deleting issue:', error);
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
@@ -473,12 +392,8 @@ export function InspectionProvider({ children }) {
 
   const deleteInspection = async (inspectionId) => {
     try {
-      const { error } = await supabase
-        .from('inspections_fire_v2')
-        .delete()
-        .eq('id', inspectionId);
-
-      if (error) throw error;
+      const updatedInspections = state.inspections.filter(inspection => inspection.id !== inspectionId);
+      saveToLocalStorage('fire_inspection_inspections', updatedInspections);
       dispatch({ type: actionTypes.DELETE_INSPECTION, payload: inspectionId });
     } catch (error) {
       console.error('Error deleting inspection:', error);
@@ -507,38 +422,7 @@ export function InspectionProvider({ children }) {
     return [...state.locationHistory].sort((a, b) => new Date(b.last_used) - new Date(a.last_used));
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR');
-  };
-
-  // 지적사항 그룹핑 함수 - 상세위치를 콤마로 구분
-  const groupIssuesByDescriptionAndLocation = (issues) => {
-    return issues.reduce((acc, issue) => {
-      const key = `${issue.description}_${issue.location}`;
-      
-      if (!acc[key]) {
-        acc[key] = {
-          description: issue.description,
-          location: issue.location,
-          detailLocations: []
-        };
-      }
-      
-      // 상세위치가 있고 중복되지 않는 경우만 추가
-      if (issue.detail_location && issue.detail_location.trim()) {
-        const trimmedDetailLocation = issue.detail_location.trim();
-        if (!acc[key].detailLocations.includes(trimmedDetailLocation)) {
-          acc[key].detailLocations.push(trimmedDetailLocation);
-        }
-      }
-      
-      return acc;
-    }, {});
-  };
-
-  // 간소화된 보고서 내용 생성 함수 (권고사항 구분, 상세위치 콤마 구분)
+  // 보고서 내용 생성 함수
   const generateReportContent = (inspection, site) => {
     const date = formatDateOnly(inspection.created_at);
 
@@ -557,7 +441,6 @@ export function InspectionProvider({ children }) {
         };
       }
 
-      // 상세위치가 있고 중복되지 않는 경우만 추가
       if (issue.detail_location && issue.detail_location.trim()) {
         const trimmedDetailLocation = issue.detail_location.trim();
         if (!acc[issue.facility_type][key].detailLocations.includes(trimmedDetailLocation)) {
@@ -579,24 +462,23 @@ export function InspectionProvider({ children }) {
 점검일: ${date}
 
 ${sortedFacilities.map(facilityType => {
-      const facilityIssues = Object.values(groupedIssues[facilityType]);
-      const sectionTitle = facilityType === '권고사항' ? '권고사항' : `설비명: ${facilityType}`;
-
-      return `
+  const facilityIssues = Object.values(groupedIssues[facilityType]);
+  const sectionTitle = facilityType === '권고사항' ? '권고사항' : `설비명: ${facilityType}`;
+  
+  return `
 ${sectionTitle}
-${facilityIssues.map((issue, index) => {
-        let locationText = issue.location;
-        
-        // 상세위치들을 콤마로 구분하여 연결
-        if (issue.detailLocations.length > 0) {
-          locationText += ` (${issue.detailLocations.join(', ')})`;
-        }
 
-        return `${index + 1}. ${issue.description}
-   위치: ${locationText}`;
-      }).join('\n')}
+${facilityIssues.map((issue, index) => {
+  let locationText = issue.location;
+  if (issue.detailLocations.length > 0) {
+    locationText += ` ${issue.detailLocations.join(', ')}`;
+  }
+  return `${index + 1}. ${issue.description}
+위치: ${locationText}`;
+}).join('\n')}
+
 `;
-    }).join('')}
+}).join('')}
 
 ${inspection.notes ? `점검 특이사항: ${inspection.notes}\n` : ''}${site?.notes ? `현장 특이사항: ${site.notes}\n` : ''}
 
@@ -620,7 +502,6 @@ ${inspection.notes ? `점검 특이사항: ${inspection.notes}\n` : ''}${site?.n
     getSortedIssueHistory,
     getSortedLocationHistory,
     generateReportContent,
-    groupIssuesByDescriptionAndLocation,
     facilityOrder,
   }), [state, facilityOrder]);
 

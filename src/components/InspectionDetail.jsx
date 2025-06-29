@@ -4,28 +4,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SafeIcon from '../common/SafeIcon';
 import IssueForm from './IssueForm';
 import ReportModal from './ReportModal';
-import TeamMembers from './collaboration/TeamMembers';
-import Comments from './collaboration/Comments';
 import { useInspection } from '../context/InspectionContext';
-import { useAuth } from '../context/AuthContext';
-import { formatDateOnly, formatDateTime } from '../utils/dateUtils';
+import { formatDateOnly } from '../utils/dateUtils';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiArrowLeft, FiFileText, FiMapPin, FiUser, FiCalendar, FiPlus, FiEdit2, FiClipboard, FiEdit, FiSave, FiX, FiMessageCircle, FiUsers } = FiIcons;
+const { FiArrowLeft, FiFileText, FiMapPin, FiUser, FiCalendar, FiPlus, FiEdit2, FiClipboard, FiEdit, FiSave, FiX } = FiIcons;
 
 function InspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { inspections, sites, addIssueToInspection, updateIssue, deleteIssue, updateInspection, facilityOrder } = useInspection();
+  
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [editingIssue, setEditingIssue] = useState(null);
   const [isEditingInspection, setIsEditingInspection] = useState(false);
   const [editInspectionData, setEditInspectionData] = useState({});
-  const [teamMembers, setTeamMembers] = useState([]);
-  const [showComments, setShowComments] = useState(false);
-  const [showTeamPanel, setShowTeamPanel] = useState(false);
 
   const inspection = inspections.find(p => p.id === id);
   const site = inspection?.site || sites.find(s => s.id === inspection?.site_id);
@@ -38,7 +32,7 @@ function InspectionDetail() {
       if (!acc[issue.facility_type]) {
         acc[issue.facility_type] = {};
       }
-
+      
       const key = `${issue.description}_${issue.location}`;
       if (!acc[issue.facility_type][key]) {
         acc[issue.facility_type][key] = {
@@ -59,7 +53,6 @@ function InspectionDetail() {
 
       // 개별 이슈 저장 (편집/삭제용)
       acc[issue.facility_type][key].issues.push(issue);
-
       return acc;
     }, {});
 
@@ -150,7 +143,7 @@ function InspectionDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-md mx-auto">
         {/* 헤더 */}
         <motion.div
@@ -169,27 +162,6 @@ function InspectionDetail() {
             </button>
 
             <div className="flex space-x-2">
-              {/* 팀 협업 버튼들 */}
-              <button
-                onClick={() => setShowTeamPanel(!showTeamPanel)}
-                className={`p-2 rounded-xl transition-colors duration-200 ${
-                  showTeamPanel ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title="팀 멤버"
-              >
-                <SafeIcon icon={FiUsers} className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setShowComments(!showComments)}
-                className={`p-2 rounded-xl transition-colors duration-200 ${
-                  showComments ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title="댓글"
-              >
-                <SafeIcon icon={FiMessageCircle} className="w-4 h-4" />
-              </button>
-
               {!isEditingInspection ? (
                 <>
                   <button
@@ -229,37 +201,6 @@ function InspectionDetail() {
         </motion.div>
 
         <div className="p-4 space-y-4">
-          {/* 팀 멤버 패널 */}
-          <AnimatePresence>
-            {showTeamPanel && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <TeamMembers 
-                  inspectionId={inspection.id} 
-                  onMembersChange={setTeamMembers}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* 댓글 패널 */}
-          <AnimatePresence>
-            {showComments && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Comments inspectionId={inspection.id} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* 점검 정보 카드 */}
           <motion.div
             className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
@@ -277,13 +218,6 @@ function InspectionDetail() {
                   <p className="text-sm text-gray-500">점검 상세</p>
                 </div>
               </div>
-              {/* 팀 멤버 수 표시 */}
-              {teamMembers.length > 0 && (
-                <div className="flex items-center space-x-1 bg-blue-50 px-2 py-1 rounded-lg">
-                  <SafeIcon icon={FiUsers} className="w-3 h-3 text-blue-600" />
-                  <span className="text-xs text-blue-600">{teamMembers.length + 1}명</span>
-                </div>
-              )}
             </div>
 
             <div className="space-y-3">
@@ -399,10 +333,10 @@ function InspectionDetail() {
                       <h3 className="font-semibold text-gray-900 mb-3 text-sm">{facilityType}</h3>
                       <div className="space-y-3">
                         {Object.values(groupedIssues[facilityType]).map((groupedIssue, index) => {
-                          // 상세위치들을 콤마로 구분하여 표시
+                          // 위치와 상세위치 형식: "101동 2계단 3층, 지하1층"
                           let locationText = groupedIssue.location;
                           if (groupedIssue.detailLocations.length > 0) {
-                            locationText += ` (${groupedIssue.detailLocations.join(', ')})`;
+                            locationText += ` ${groupedIssue.detailLocations.join(', ')}`;
                           }
 
                           return (
@@ -420,14 +354,6 @@ function InspectionDetail() {
                                     <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                                       #{index + 1}
                                     </span>
-                                    {/* 댓글 버튼 */}
-                                    <button
-                                      onClick={() => setShowComments(!showComments)}
-                                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                                    >
-                                      <SafeIcon icon={FiMessageCircle} className="w-3 h-3 inline mr-1" />
-                                      댓글
-                                    </button>
                                   </div>
                                   <p className="text-sm font-medium text-gray-900 mb-2">{groupedIssue.description}</p>
                                   <div className="text-xs text-gray-600">

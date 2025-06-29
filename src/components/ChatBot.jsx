@@ -8,11 +8,7 @@ const { FiArrowLeft } = FiIcons;
 
 // 불끄냥 아이콘 컴포넌트
 const FireCatIcon = ({ className }) => (
-  <svg 
-    viewBox="0 0 64 64" 
-    className={className}
-    fill="currentColor"
-  >
+  <svg viewBox="0 0 64 64" className={className} fill="currentColor">
     {/* 고양이 머리 */}
     <circle cx="32" cy="28" r="18" fill="#FF6B35" />
     
@@ -73,16 +69,14 @@ function ChatBot() {
     script.src = 'https://agenticflow.ai/scripts/agent.js';
     script.setAttribute('data-agent-id', '6cbf1565-408b-46df-99e1-155b96997f8d');
     script.async = true;
-    
+
     script.onload = () => {
       console.log('불끄냥 챗봇 로드 완료');
       setIsLoading(false);
-      
+
       // 챗봇 버튼이 항상 보이도록 설정
       setTimeout(() => {
-        const agentWidget = document.querySelector('[data-agent-id="6cbf1565-408b-46df-99e1-155b96997f8d"]');
         const chatButton = document.getElementById('agenticflow-chat-bubble-button');
-        
         if (chatButton) {
           // 챗봇 버튼 스타일 유지 (숨기지 않음)
           chatButton.style.display = 'flex';
@@ -93,7 +87,7 @@ function ChatBot() {
         }
       }, 500);
     };
-    
+
     script.onerror = () => {
       console.error('불끄냥 챗봇 로드 실패');
       setIsLoading(false);
@@ -126,7 +120,7 @@ function ChatBot() {
             <SafeIcon icon={FiArrowLeft} className="w-5 h-5" />
             <span className="font-medium">뒤로</span>
           </button>
-          
+
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-orange-100 rounded-xl">
               <FireCatIcon className="w-6 h-6 text-orange-600" />
@@ -136,7 +130,7 @@ function ChatBot() {
               <p className="text-xs text-gray-500">소방시설 AI 도우미</p>
             </div>
           </div>
-          
+
           <div className="w-16"></div> {/* 균형을 위한 공간 */}
         </div>
       </motion.div>
@@ -156,7 +150,7 @@ function ChatBot() {
             >
               <FireCatIcon className="w-16 h-16 text-orange-500" />
             </motion.div>
-            
+
             {/* 불꽃 효과 */}
             <motion.div
               className="absolute -top-2 -right-2"
@@ -166,7 +160,7 @@ function ChatBot() {
               <span className="text-2xl">🔥</span>
             </motion.div>
           </div>
-          
+
           <motion.div
             className="mt-6 text-center"
             initial={{ opacity: 0, y: 10 }}
@@ -176,7 +170,7 @@ function ChatBot() {
             <h2 className="text-xl font-bold text-gray-900 mb-2">불끄냥이 준비중이에요</h2>
             <p className="text-gray-600">소방시설 관련 질문을 도와드릴게요!</p>
           </motion.div>
-          
+
           {/* 로딩 도트 */}
           <div className="flex space-x-2 mt-4">
             {[0, 1, 2].map((i) => (
@@ -184,11 +178,7 @@ function ChatBot() {
                 key={i}
                 className="w-2 h-2 bg-orange-500 rounded-full"
                 animate={{ scale: [1, 1.2, 1] }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  delay: i * 0.2
-                }}
+                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
               />
             ))}
           </div>
@@ -196,8 +186,8 @@ function ChatBot() {
       )}
 
       {/* 챗봇 컨테이너 */}
-      <div 
-        id="chatbot-container" 
+      <div
+        id="chatbot-container"
         className={`w-full ${isLoading ? 'hidden' : 'block'}`}
         style={{ minHeight: 'calc(100vh - 80px)' }}
       />
@@ -217,7 +207,6 @@ function ChatBot() {
               소방시설 점검, 안전 규정, 장비 관리 등<br />
               궁금한 것이 있으면 언제든 물어보세요!
             </p>
-            
             <div className="space-y-2 text-xs text-gray-500">
               <div className="flex items-center justify-center space-x-2">
                 <span>🔥</span>

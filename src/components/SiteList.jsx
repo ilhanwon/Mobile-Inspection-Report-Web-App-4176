@@ -6,7 +6,7 @@ import { useInspectionData } from '../hooks/useInspectionData';
 import { useInspection } from '../context/InspectionContext';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiMapPin, FiFileText, FiTrash2, FiEye, FiPlus, FiCheck, FiPhone, FiUser, FiSearch, FiX, FiMail, FiCalendar } = FiIcons;
+const { FiMapPin, FiFileText, FiTrash2, FiEye, FiPlus, FiPhone, FiUser, FiSearch, FiX, FiMail, FiCalendar } = FiIcons;
 
 function SiteList() {
   const navigate = useNavigate();
@@ -86,7 +86,10 @@ function SiteList() {
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <div className="relative">
-            <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <SafeIcon
+              icon={FiSearch}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+            />
             <input
               type="text"
               value={searchQuery}
@@ -176,18 +179,21 @@ function SiteList() {
                               <span>{site.phone}</span>
                             </div>
                           )}
+
                           {site.manager_name && (
                             <div className="flex items-center space-x-2 text-sm text-gray-600">
                               <SafeIcon icon={FiUser} className="w-3 h-3" />
                               <span>관리자: {site.manager_name}</span>
                             </div>
                           )}
+
                           {site.manager_phone && (
                             <div className="flex items-center space-x-2 text-sm text-gray-600">
                               <SafeIcon icon={FiPhone} className="w-3 h-3" />
                               <span>관리자: {site.manager_phone}</span>
                             </div>
                           )}
+
                           {site.approval_date && (
                             <div className="flex items-center space-x-2 text-sm text-gray-600">
                               <SafeIcon icon={FiCalendar} className="w-3 h-3" />
@@ -200,15 +206,16 @@ function SiteList() {
                         <div className="bg-gray-50 rounded-xl p-3">
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center space-x-4">
-                              <StatItem icon={FiFileText} count={stats.total} label="" color="text-gray-600" />
-                              {stats.completed > 0 && (
-                                <StatItem icon={FiCheck} count={stats.completed} label="완료" color="text-green-600" />
-                              )}
+                              <StatItem
+                                icon={FiFileText}
+                                count={stats.total}
+                                label=""
+                                color="text-gray-600"
+                              />
                             </div>
                           </div>
                         </div>
                       </div>
-                      
                       <div className="flex items-center space-x-2 ml-3">
                         <button
                           onClick={(e) => handleDeleteSite(site.id, e)}

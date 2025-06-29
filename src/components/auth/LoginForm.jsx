@@ -74,7 +74,7 @@ function LoginForm() {
           setSuccess('');
         } else if (result.needsManualLogin) {
           setSuccess('✅ ' + result.message);
-          // 폼을 로그인 모드로 전환
+          // 폼을 로그인 모드로 전환하고 이메일/비밀번호 유지
           setTimeout(() => {
             setIsSignUp(false);
             setFormData({
@@ -83,10 +83,11 @@ function LoginForm() {
               fullName: '',
               confirmPassword: ''
             });
-            setSuccess('이제 로그인해주세요.');
+            setSuccess('이제 로그인 버튼을 클릭해주세요.');
           }, 2000);
-        } else {
-          setSuccess('🎉 회원가입 완료! 계정이 자동으로 활성화되어 로그인되었습니다.');
+        } else if (result.success) {
+          setSuccess('🎉 회원가입 완료! 자동으로 로그인되었습니다.');
+          // 폼 초기화
           setFormData({
             email: '',
             password: '',
@@ -111,12 +112,21 @@ function LoginForm() {
         if (error) {
           setError(error.message);
         } else {
-          setSuccess('로그인 성공!');
+          setSuccess('로그인 성공! 앱을 준비하고 있습니다...');
+          // 성공 시 폼 초기화
+          setTimeout(() => {
+            setFormData({
+              email: '',
+              password: '',
+              fullName: '',
+              confirmPassword: ''
+            });
+          }, 1000);
         }
       }
     } catch (error) {
       console.error('인증 오류:', error);
-      setError('오류가 발생했습니다. 다시 시도해주세요.');
+      setError('알 수 없는 오류가 발생했습니다. 다시 시도해주세요.');
       setSuccess('');
     } finally {
       setLoading(false);
@@ -191,7 +201,7 @@ function LoginForm() {
           <div className="flex items-center space-x-2">
             <SafeIcon icon={FiIcons.FiCheckCircle} className="w-4 h-4 text-green-600 flex-shrink-0" />
             <p className="text-xs text-green-800">
-              {isSignUp ? '🚀 회원가입 즉시 계정이 자동 활성화됩니다!' : '⚡ 즉시 로그인 가능합니다!'}
+              {isSignUp ? '🚀 회원가입 후 즉시 사용 가능합니다!' : '⚡ 즉시 로그인 가능합니다!'}
             </p>
           </div>
         </div>
@@ -216,6 +226,7 @@ function LoginForm() {
                 placeholder="홍길동"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 required={isSignUp}
+                disabled={loading}
               />
             </motion.div>
           )}
@@ -233,6 +244,7 @@ function LoginForm() {
               placeholder="user@example.com"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               required
+              disabled={loading}
             />
           </div>
 
@@ -250,11 +262,13 @@ function LoginForm() {
                 placeholder="최소 6자 이상"
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 required
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                disabled={loading}
               >
                 <SafeIcon icon={showPassword ? FiEyeOff : FiEye} className="w-5 h-5" />
               </button>
@@ -279,6 +293,7 @@ function LoginForm() {
                 placeholder="비밀번호를 다시 입력하세요"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 required={isSignUp}
+                disabled={loading}
               />
             </motion.div>
           )}
@@ -346,6 +361,7 @@ function LoginForm() {
             type="button"
             onClick={isSignUp ? switchToLogin : switchToSignUp}
             className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200"
+            disabled={loading}
           >
             {isSignUp ? '이미 계정이 있으신가요? 로그인하기' : '계정이 없으신가요? 회원가입하기'}
           </button>

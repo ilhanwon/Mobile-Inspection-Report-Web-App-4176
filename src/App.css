@@ -3,6 +3,41 @@
   background-color: #f9fafb;
 }
 
+/* 전역 스타일 리셋 */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  position: relative;
+}
+
+#root {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* 네비게이션 컨테이너 강제 고정 */
+.navigation-container {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  will-change: auto !important;
+  contain: layout style paint;
+}
+
+/* 메인 콘텐츠 하단 여백 확보 */
+.main-content-with-nav {
+  padding-bottom: 120px !important; /* 네비게이션 높이 + 여유 공간 */
+  min-height: 100vh;
+  position: relative;
+  box-sizing: border-box;
+}
+
 /* 모바일 최적화 */
 @media (max-width: 768px) {
   .touch-action-manipulation {
@@ -13,6 +48,7 @@
   body {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    position: relative;
   }
 
   /* 모바일 입력 필드 줌 방지 */
@@ -42,18 +78,23 @@
     min-height: 44px;
     border-radius: 12px;
   }
+
+  /* 네비게이션 모바일 최적화 */
+  .navigation-container {
+    max-width: 100vw;
+  }
 }
 
-/* 안전 영역 대응 */
+/* 안전 영역 대응 강화 */
 @supports (padding: max(0px)) {
   .safe-area-pb {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  
+
   .pb-safe {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  
+
   .safe-area-inset {
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
@@ -62,34 +103,55 @@
   }
 }
 
-/* 네비게이션 전용 스타일 */
-.navigation-fixed {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  background: white;
-  border-top: 1px solid #e5e7eb;
+/* iOS 전용 최적화 */
+@supports (-webkit-touch-callout: none) {
+  /* iOS에서 네비게이션 강제 고정 */
+  .navigation-container {
+    position: fixed !important;
+    bottom: 0 !important;
+    transform: translate3d(0, 0, 0) !important;
+  }
+  
+  /* iOS Safari 주소창 대응 */
+  .main-content-with-nav {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* 안드로이드 키보드 대응 */
+@media screen and (max-height: 500px) {
+  .navigation-container {
+    transform: none !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+  }
 }
 
 /* 반응형 네비게이션 */
 @media (max-width: 640px) {
-  .navigation-fixed {
-    /* 모바일에서 전체 너비 */
-    max-width: none;
+  .navigation-container {
+    max-width: 100vw;
+    left: 0;
+    right: 0;
   }
 }
 
 @media (min-width: 641px) {
-  .navigation-fixed {
-    /* 태블릿/데스크톱에서 중앙 정렬 및 최대 너비 제한 */
+  .navigation-container {
     max-width: 28rem; /* max-w-md */
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) !important;
     border-radius: 16px 16px 0 0;
-    border-left: 1px solid #e5e7eb;
-    border-right: 1px solid #e5e7eb;
+    border-left: 1px solid rgba(229, 231, 235, 0.8);
+    border-right: 1px solid rgba(229, 231, 235, 0.8);
   }
 }
 
@@ -111,12 +173,6 @@
   background: #a8a8a8;
 }
 
-/* 애니메이션 성능 최적화 */
-* {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-}
-
 /* 포커스 스타일 */
 button:focus,
 input:focus,
@@ -130,6 +186,8 @@ textarea:focus {
 button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* 활성 상태 스케일 효과 */
@@ -155,27 +213,6 @@ button {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* 모달 오버레이 */
-.modal-overlay {
-  backdrop-filter: blur(4px);
-}
-
-/* 프린트 스타일 */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  
-  body {
-    font-size: 12pt;
-    line-height: 1.5;
-  }
-  
-  .print-break {
-    page-break-after: always;
-  }
-}
-
 /* 전체 화면 모달 최적화 */
 .fullscreen-modal {
   position: fixed;
@@ -185,13 +222,6 @@ button {
   bottom: 0;
   z-index: 9999;
   background: white;
-}
-
-/* 모바일 키보드 대응 */
-@supports (-webkit-touch-callout: none) {
-  .ios-keyboard-fix {
-    padding-bottom: env(keyboard-inset-height, 0);
-  }
 }
 
 /* 부드러운 스크롤 */
@@ -244,11 +274,6 @@ button {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* 네비게이션 그라디언트 효과 */
-.nav-gradient {
-  background: linear-gradient(to top, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(255, 255, 255, 0) 100%);
-}
-
 /* 반응형 패딩 */
 @media (max-width: 640px) {
   .responsive-padding {
@@ -264,27 +289,134 @@ button {
   }
 }
 
-/* 네비게이션 아이콘 최적화 */
-.nav-icon {
-  transition: all 0.2s ease-in-out;
+/* 고해상도 디스플레이 최적화 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .navigation-container {
+    border-top: 0.5px solid rgba(229, 231, 235, 0.8);
+  }
 }
 
-.nav-icon:hover {
-  transform: scale(1.1);
+/* 다크 모드 대응 */
+@media (prefers-color-scheme: dark) {
+  .navigation-container {
+    background: rgba(17, 24, 39, 0.95) !important;
+  }
+  
+  .navigation-container > div:last-child {
+    background-color: rgba(17, 24, 39, 0.98) !important;
+    border-top-color: rgba(75, 85, 99, 0.8) !important;
+  }
 }
 
-.nav-icon.active {
-  transform: scale(1.05);
+/* 접근성 향상 */
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
-/* 하단 네비게이션 그림자 */
-.bottom-nav-shadow {
-  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05), 0 -2px 4px -1px rgba(0, 0, 0, 0.03);
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .navigation-container {
+    border-top: 2px solid #000 !important;
+    background: rgb(255, 255, 255) !important;
+  }
+  
+  button {
+    border: 1px solid #000 !important;
+  }
 }
 
-/* 네비게이션 블러 효과 */
-.nav-blur {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  background-color: rgba(255, 255, 255, 0.95);
+/* 특수 상황 대응 */
+/* 키보드 팝업 시에도 네비게이션 유지 */
+@media (max-height: 400px) {
+  .navigation-container {
+    position: fixed !important;
+    bottom: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* 가로 모드에서도 네비게이션 유지 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .navigation-container {
+    position: fixed !important;
+    bottom: 0 !important;
+  }
+  
+  .main-content-with-nav {
+    padding-bottom: 100px !important;
+  }
+}
+
+/* PWA 모드에서 네비게이션 최적화 */
+@media (display-mode: standalone) {
+  .navigation-container {
+    position: fixed !important;
+    bottom: 0 !important;
+    z-index: 99999 !important;
+  }
+}
+
+/* 풀스크린 모드에서도 네비게이션 유지 */
+@media (display-mode: fullscreen) {
+  .navigation-container {
+    position: fixed !important;
+    bottom: 0 !important;
+    z-index: 99999 !important;
+  }
+}
+
+/* 강제 표시 클래스 */
+.force-visible {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 99999 !important;
+}
+
+/* 네비게이션 컨테이너 디버깅 */
+.navigation-container {
+  /* 디버깅용 - 실제 운영에서는 제거 */
+  /* outline: 2px solid red; */
+}
+
+/* 모든 상황에서 네비게이션 강제 표시 */
+.navigation-container,
+.navigation-container * {
+  box-sizing: border-box;
+}
+
+/* 컨테이너 오버플로우 방지 */
+.main-content-with-nav {
+  overflow-x: hidden;
+  position: relative;
+  width: 100%;
+}
+
+/* 네비게이션이 잘리지 않도록 보장 */
+body {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+html {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* 스크롤 컨테이너 최적화 */
+.main-content-with-nav {
+  scroll-padding-bottom: 120px;
+}
+
+/* Z-index 스택 컨텍스트 최적화 */
+.navigation-container {
+  isolation: isolate;
 }

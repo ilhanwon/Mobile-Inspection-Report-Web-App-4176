@@ -34,6 +34,7 @@ export default [
       'react-refresh/only-export-components': 'off',
       'no-unused-vars': 'off',
       'no-case-declarations': 'off',
+      'no-dupe-keys': 'error', // 중복 키 오류 활성화
     },
   },
 ];

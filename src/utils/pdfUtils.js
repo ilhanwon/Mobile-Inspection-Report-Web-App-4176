@@ -15,7 +15,7 @@ const splitTextToLines = (doc, text, maxWidth) => {
   words.forEach(word => {
     const testLine = currentLine + (currentLine ? ' ' : '') + word;
     const testWidth = doc.getTextWidth(testLine);
-    
+
     if (testWidth > maxWidth && currentLine) {
       lines.push(currentLine);
       currentLine = word;
@@ -23,17 +23,17 @@ const splitTextToLines = (doc, text, maxWidth) => {
       currentLine = testLine;
     }
   });
-  
+
   if (currentLine) {
     lines.push(currentLine);
   }
-  
+
   return lines;
 };
 
 export const generatePDF = (inspection, site) => {
   const doc = new jsPDF();
-  
+
   // 페이지 설정
   let yPosition = 20;
   const lineHeight = 8;
@@ -70,7 +70,6 @@ export const generatePDF = (inspection, site) => {
     // 기본 정보
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    
     const infoLines = [
       `현장명: ${site?.name || 'Unknown'}`,
       `소재지: ${site?.address || 'Unknown'}`,
@@ -104,7 +103,7 @@ export const generatePDF = (inspection, site) => {
       if (!acc[issue.facility_type]) {
         acc[issue.facility_type] = {};
       }
-
+      
       const key = `${issue.description}_${issue.location}`;
       if (!acc[issue.facility_type][key]) {
         acc[issue.facility_type][key] = {
@@ -132,41 +131,37 @@ export const generatePDF = (inspection, site) => {
     // 지적사항 출력
     sortedFacilities.forEach(facilityType => {
       addNewPageIfNeeded(lineHeight * 3);
-      
+
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      
       const sectionTitle = facilityType === '권고사항' ? '권고사항' : `설비명: ${facilityType}`;
       doc.text(sectionTitle, margin, yPosition);
       yPosition += lineHeight * 1.5;
 
       const facilityIssues = Object.values(groupedIssues[facilityType]);
-      
+
       facilityIssues.forEach((issue, index) => {
         addNewPageIfNeeded(lineHeight * 3);
-        
+
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        
+
         // 불량내용
         const issueText = `${index + 1}. ${issue.description}`;
         const issueLines = splitTextToLines(doc, issueText, maxWidth - 10);
-        
         issueLines.forEach((line, lineIndex) => {
           if (lineIndex > 0) addNewPageIfNeeded(lineHeight);
           doc.text(line, margin + 5, yPosition);
           yPosition += lineHeight;
         });
 
-        // 위치 정보 - 상세위치 콤마 구분
+        // 위치 정보 - 상세위치 콤마 구분 (괄호 제거)
         let locationText = `   위치: ${issue.location}`;
-        
         if (issue.detailLocations.length > 0) {
-          locationText += ` (${issue.detailLocations.join(', ')})`;
+          locationText += `, ${issue.detailLocations.join(', ')}`;
         }
 
         const locationLines = splitTextToLines(doc, locationText, maxWidth - 10);
-        
         locationLines.forEach((line, lineIndex) => {
           if (lineIndex > 0) addNewPageIfNeeded(lineHeight);
           doc.text(line, margin + 5, yPosition);
@@ -181,7 +176,6 @@ export const generatePDF = (inspection, site) => {
 
     // 요약 정보
     addNewPageIfNeeded(lineHeight * 6);
-    
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text('===점검 요약===', margin, yPosition);
@@ -196,7 +190,6 @@ export const generatePDF = (inspection, site) => {
     if (inspection.notes) {
       const notesText = `점검 특이사항: ${inspection.notes}`;
       const notesLines = splitTextToLines(doc, notesText, maxWidth);
-      
       notesLines.forEach(line => {
         addNewPageIfNeeded(lineHeight);
         doc.text(line, margin, yPosition);
@@ -211,7 +204,6 @@ export const generatePDF = (inspection, site) => {
     if (site?.notes) {
       const siteNotesText = `현장 특이사항: ${site.notes}`;
       const siteNotesLines = splitTextToLines(doc, siteNotesText, maxWidth);
-      
       siteNotesLines.forEach(line => {
         addNewPageIfNeeded(lineHeight);
         doc.text(line, margin, yPosition);
@@ -227,7 +219,6 @@ export const generatePDF = (inspection, site) => {
 
     // PDF 저장
     doc.save(filename);
-    
   } catch (error) {
     console.error('PDF 생성 중 오류:', error);
     throw new Error('PDF 생성에 실패했습니다.');
