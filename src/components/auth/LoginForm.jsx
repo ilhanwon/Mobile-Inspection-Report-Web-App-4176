@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } = FiIcons;
+const { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle, FiShield, FiCheckCircle } = FiIcons;
 
 function LoginForm() {
   const { signIn, signUp } = useAuth();
@@ -26,7 +26,10 @@ function LoginForm() {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
     setError('');
     setSuccess('');
   };
@@ -66,9 +69,8 @@ function LoginForm() {
         }
 
         setSuccess('계정을 생성하고 있습니다... 잠시만 기다려주세요.');
-
         const result = await signUp(formData.email, formData.password, formData.fullName);
-        
+
         if (result.error) {
           setError(result.error.message);
           setSuccess('');
@@ -108,7 +110,7 @@ function LoginForm() {
         }
 
         const { data, error } = await signIn(formData.email, formData.password);
-        
+
         if (error) {
           setError(error.message);
         } else {
@@ -168,7 +170,7 @@ function LoginForm() {
         {/* 로고 및 제목 */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <SafeIcon icon={FiIcons.FiShield} className="w-8 h-8 text-white" />
+            <SafeIcon icon={FiShield} className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">소방시설 점검</h1>
           <p className="text-gray-600">팀 협업 지적사항 관리</p>
@@ -180,7 +182,9 @@ function LoginForm() {
             type="button"
             onClick={switchToLogin}
             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
-              !isSignUp ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+              !isSignUp
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600'
             }`}
           >
             로그인
@@ -189,7 +193,9 @@ function LoginForm() {
             type="button"
             onClick={switchToSignUp}
             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
-              isSignUp ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+              isSignUp
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600'
             }`}
           >
             회원가입
@@ -199,7 +205,7 @@ function LoginForm() {
         {/* 즉시 활성화 안내 */}
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
           <div className="flex items-center space-x-2">
-            <SafeIcon icon={FiIcons.FiCheckCircle} className="w-4 h-4 text-green-600 flex-shrink-0" />
+            <SafeIcon icon={FiCheckCircle} className="w-4 h-4 text-green-600 flex-shrink-0" />
             <p className="text-xs text-green-800">
               {isSignUp ? '🚀 회원가입 후 즉시 사용 가능합니다!' : '⚡ 즉시 로그인 가능합니다!'}
             </p>
@@ -317,7 +323,7 @@ function LoginForm() {
               animate={{ opacity: 1 }}
               className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center space-x-2"
             >
-              <SafeIcon icon={FiIcons.FiCheckCircle} className="w-4 h-4 text-green-600 flex-shrink-0" />
+              <SafeIcon icon={FiCheckCircle} className="w-4 h-4 text-green-600 flex-shrink-0" />
               <p className="text-sm text-green-600">{success}</p>
             </motion.div>
           )}
@@ -327,8 +333,8 @@ function LoginForm() {
             type="submit"
             disabled={loading}
             className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 ${
-              loading 
-                ? 'bg-blue-300 text-white cursor-not-allowed' 
+              loading
+                ? 'bg-blue-300 text-white cursor-not-allowed'
                 : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
             }`}
           >

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useMemo, useCallback } from 'react';
 import { formatDateOnly } from '../utils/dateUtils';
 
 const InspectionContext = createContext();
@@ -31,42 +31,57 @@ const actionTypes = {
   SET_CURRENT_INSPECTION: 'SET_CURRENT_INSPECTION',
 };
 
-function inspectionReducer(state, action) {
+// 리듀서 최적화
+const inspectionReducer = (state, action) => {
   switch (action.type) {
     case actionTypes.SET_LOADING:
       return { ...state, loading: action.payload };
+      
     case actionTypes.SET_ERROR:
       return { ...state, error: action.payload, loading: false };
+      
     case actionTypes.LOAD_SITES:
       return { ...state, sites: action.payload };
+      
     case actionTypes.LOAD_INSPECTIONS:
       return { ...state, inspections: action.payload };
+      
     case actionTypes.LOAD_ISSUE_HISTORY:
       return { ...state, issueHistory: action.payload };
+      
     case actionTypes.LOAD_LOCATION_HISTORY:
       return { ...state, locationHistory: action.payload };
+      
     case actionTypes.ADD_SITE:
       return { ...state, sites: [action.payload, ...state.sites] };
+      
     case actionTypes.UPDATE_SITE:
       return {
         ...state,
         sites: state.sites.map(site =>
           site.id === action.payload.id ? action.payload : site
         ),
-        currentSite: state.currentSite?.id === action.payload.id ? action.payload : state.currentSite,
+        currentSite: state.currentSite?.id === action.payload.id 
+          ? action.payload 
+          : state.currentSite,
       };
+      
     case actionTypes.DELETE_SITE:
       return {
         ...state,
         sites: state.sites.filter(site => site.id !== action.payload),
-        currentSite: state.currentSite?.id === action.payload ? null : state.currentSite,
+        currentSite: state.currentSite?.id === action.payload 
+          ? null 
+          : state.currentSite,
       };
+      
     case actionTypes.ADD_INSPECTION:
       return {
         ...state,
         inspections: [action.payload, ...state.inspections],
         currentInspection: action.payload
       };
+      
     case actionTypes.UPDATE_INSPECTION:
       const updatedInspections = state.inspections.map(inspection =>
         inspection.id === action.payload.id ? action.payload : inspection
@@ -74,27 +89,37 @@ function inspectionReducer(state, action) {
       return {
         ...state,
         inspections: updatedInspections,
-        currentInspection: state.currentInspection?.id === action.payload.id ? action.payload : state.currentInspection
+        currentInspection: state.currentInspection?.id === action.payload.id 
+          ? action.payload 
+          : state.currentInspection
       };
+      
     case actionTypes.DELETE_INSPECTION:
       return {
         ...state,
-        inspections: state.inspections.filter(inspection => inspection.id !== action.payload),
-        currentInspection: state.currentInspection?.id === action.payload ? null : state.currentInspection,
+        inspections: state.inspections.filter(inspection => 
+          inspection.id !== action.payload
+        ),
+        currentInspection: state.currentInspection?.id === action.payload 
+          ? null 
+          : state.currentInspection,
       };
+      
     case actionTypes.SET_CURRENT_SITE:
       return { ...state, currentSite: action.payload };
+      
     case actionTypes.SET_CURRENT_INSPECTION:
       return { ...state, currentInspection: action.payload };
+      
     default:
       return state;
   }
-}
+};
 
 export function InspectionProvider({ children }) {
   const [state, dispatch] = useReducer(inspectionReducer, initialState);
 
-  // 설비별 정렬 순서 정의
+  // 설비별 정렬 순서 정의 (메모화)
   const facilityOrder = useMemo(() => ({
     '소화설비': 1,
     '경보설비': 2,
@@ -106,47 +131,53 @@ export function InspectionProvider({ children }) {
     '기타': 8
   }), []);
 
-  // 데이터 로드 (로컬 스토리지만 사용)
-  useEffect(() => {
-    loadLocalData();
-  }, []);
-
-  const loadLocalData = () => {
-    try {
-      const sites = JSON.parse(localStorage.getItem('fire_inspection_sites') || '[]');
-      const inspections = JSON.parse(localStorage.getItem('fire_inspection_inspections') || '[]');
-      const issueHistory = JSON.parse(localStorage.getItem('fire_inspection_issue_history') || '[]');
-      const locationHistory = JSON.parse(localStorage.getItem('fire_inspection_location_history') || '[]');
-
-      dispatch({ type: actionTypes.LOAD_SITES, payload: sites });
-      dispatch({ type: actionTypes.LOAD_INSPECTIONS, payload: inspections });
-      dispatch({ type: actionTypes.LOAD_ISSUE_HISTORY, payload: issueHistory });
-      dispatch({ type: actionTypes.LOAD_LOCATION_HISTORY, payload: locationHistory });
-    } catch (error) {
-      console.error('Error loading local data:', error);
-    }
-  };
-
-  const saveToLocalStorage = (key, data) => {
+  // 로컬 스토리지 저장 최적화
+  const saveToLocalStorage = useCallback((key, data) => {
     try {
       localStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
       console.error('Error saving to localStorage:', error);
+      dispatch({ type: actionTypes.SET_ERROR, payload: '데이터 저장 중 오류가 발생했습니다.' });
     }
-  };
+  }, []);
 
-  const createSite = async (siteData) => {
+  // 데이터 로드 (초기화)
+  useEffect(() => {
+    const loadLocalData = () => {
+      try {
+        const sites = JSON.parse(localStorage.getItem('fire_inspection_sites') || '[]');
+        const inspections = JSON.parse(localStorage.getItem('fire_inspection_inspections') || '[]');
+        const issueHistory = JSON.parse(localStorage.getItem('fire_inspection_issue_history') || '[]');
+        const locationHistory = JSON.parse(localStorage.getItem('fire_inspection_location_history') || '[]');
+
+        dispatch({ type: actionTypes.LOAD_SITES, payload: sites });
+        dispatch({ type: actionTypes.LOAD_INSPECTIONS, payload: inspections });
+        dispatch({ type: actionTypes.LOAD_ISSUE_HISTORY, payload: issueHistory });
+        dispatch({ type: actionTypes.LOAD_LOCATION_HISTORY, payload: locationHistory });
+      } catch (error) {
+        console.error('Error loading local data:', error);
+        dispatch({ type: actionTypes.SET_ERROR, payload: '데이터 로드 중 오류가 발생했습니다.' });
+      }
+    };
+
+    loadLocalData();
+  }, []);
+
+  // 현장 생성
+  const createSite = useCallback(async (siteData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      
       const newSite = {
         ...siteData,
         id: Date.now().toString(),
         created_at: new Date().toISOString()
       };
-
+      
       const updatedSites = [newSite, ...state.sites];
       saveToLocalStorage('fire_inspection_sites', updatedSites);
       dispatch({ type: actionTypes.ADD_SITE, payload: newSite });
+      
       return newSite;
     } catch (error) {
       console.error('Error creating site:', error);
@@ -155,22 +186,26 @@ export function InspectionProvider({ children }) {
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
-  };
+  }, [state.sites, saveToLocalStorage]);
 
-  const updateSite = async (siteId, siteData) => {
+  // 현장 업데이트
+  const updateSite = useCallback(async (siteId, siteData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      
       const updatedSite = {
         ...state.sites.find(s => s.id === siteId),
         ...siteData,
         updated_at: new Date().toISOString()
       };
-
+      
       const updatedSites = state.sites.map(site =>
         site.id === siteId ? updatedSite : site
       );
+      
       saveToLocalStorage('fire_inspection_sites', updatedSites);
       dispatch({ type: actionTypes.UPDATE_SITE, payload: updatedSite });
+      
       return updatedSite;
     } catch (error) {
       console.error('Error updating site:', error);
@@ -179,16 +214,19 @@ export function InspectionProvider({ children }) {
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
-  };
+  }, [state.sites, saveToLocalStorage]);
 
-  const deleteSite = async (siteId) => {
+  // 현장 삭제
+  const deleteSite = useCallback(async (siteId) => {
     try {
       const updatedSites = state.sites.filter(site => site.id !== siteId);
-      const updatedInspections = state.inspections.filter(inspection => inspection.site_id !== siteId);
-
+      const updatedInspections = state.inspections.filter(inspection => 
+        inspection.site_id !== siteId
+      );
+      
       saveToLocalStorage('fire_inspection_sites', updatedSites);
       saveToLocalStorage('fire_inspection_inspections', updatedInspections);
-
+      
       dispatch({ type: actionTypes.DELETE_SITE, payload: siteId });
       dispatch({ type: actionTypes.LOAD_INSPECTIONS, payload: updatedInspections });
     } catch (error) {
@@ -196,11 +234,13 @@ export function InspectionProvider({ children }) {
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
       throw error;
     }
-  };
+  }, [state.sites, state.inspections, saveToLocalStorage]);
 
-  const createInspection = async (inspectionData) => {
+  // 점검 생성
+  const createInspection = useCallback(async (inspectionData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      
       const newInspection = {
         id: Date.now().toString(),
         site_id: inspectionData.siteId,
@@ -210,10 +250,11 @@ export function InspectionProvider({ children }) {
         issues: [],
         created_at: new Date().toISOString()
       };
-
+      
       const updatedInspections = [newInspection, ...state.inspections];
       saveToLocalStorage('fire_inspection_inspections', updatedInspections);
       dispatch({ type: actionTypes.ADD_INSPECTION, payload: newInspection });
+      
       return newInspection;
     } catch (error) {
       console.error('Error creating inspection:', error);
@@ -222,22 +263,26 @@ export function InspectionProvider({ children }) {
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
-  };
+  }, [state.inspections, saveToLocalStorage]);
 
-  const updateInspection = async (inspectionId, inspectionData) => {
+  // 점검 업데이트
+  const updateInspection = useCallback(async (inspectionId, inspectionData) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      
       const updatedInspection = {
         ...state.inspections.find(i => i.id === inspectionId),
         ...inspectionData,
         updated_at: new Date().toISOString()
       };
-
+      
       const updatedInspections = state.inspections.map(inspection =>
         inspection.id === inspectionId ? updatedInspection : inspection
       );
+      
       saveToLocalStorage('fire_inspection_inspections', updatedInspections);
       dispatch({ type: actionTypes.UPDATE_INSPECTION, payload: updatedInspection });
+      
       return updatedInspection;
     } catch (error) {
       console.error('Error updating inspection:', error);
@@ -246,9 +291,10 @@ export function InspectionProvider({ children }) {
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
-  };
+  }, [state.inspections, saveToLocalStorage]);
 
-  const addIssueToInspection = async (inspectionId, issueData) => {
+  // 지적사항 추가
+  const addIssueToInspection = useCallback(async (inspectionId, issueData) => {
     try {
       const inspection = state.inspections.find(i => i.id === inspectionId);
       if (!inspection) throw new Error('Inspection not found');
@@ -275,6 +321,7 @@ export function InspectionProvider({ children }) {
       saveToLocalStorage('fire_inspection_inspections', updatedInspections);
       dispatch({ type: actionTypes.UPDATE_INSPECTION, payload: updatedInspection });
 
+      // 히스토리 업데이트
       updateIssueHistory(issueData.description);
       updateLocationHistory(issueData.location);
 
@@ -284,9 +331,10 @@ export function InspectionProvider({ children }) {
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
       throw error;
     }
-  };
+  }, [state.inspections, saveToLocalStorage]);
 
-  const updateIssue = async (issueId, issueData) => {
+  // 지적사항 업데이트
+  const updateIssue = useCallback(async (issueId, issueData) => {
     try {
       const inspection = state.inspections.find(insp =>
         insp.issues?.some(issue => issue.id === issueId)
@@ -306,7 +354,11 @@ export function InspectionProvider({ children }) {
           : issue
       );
 
-      const updatedInspection = { ...inspection, issues: updatedIssues };
+      const updatedInspection = {
+        ...inspection,
+        issues: updatedIssues
+      };
+
       const updatedInspections = state.inspections.map(insp =>
         insp.id === inspection.id ? updatedInspection : insp
       );
@@ -323,9 +375,10 @@ export function InspectionProvider({ children }) {
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
       throw error;
     }
-  };
+  }, [state.inspections, saveToLocalStorage]);
 
-  const updateIssueHistory = (description) => {
+  // 히스토리 업데이트 함수들
+  const updateIssueHistory = useCallback((description) => {
     const existing = state.issueHistory.find(item => item.description === description);
     let updatedHistory;
 
@@ -344,9 +397,9 @@ export function InspectionProvider({ children }) {
 
     saveToLocalStorage('fire_inspection_issue_history', updatedHistory);
     dispatch({ type: actionTypes.LOAD_ISSUE_HISTORY, payload: updatedHistory });
-  };
+  }, [state.issueHistory, saveToLocalStorage]);
 
-  const updateLocationHistory = (location) => {
+  const updateLocationHistory = useCallback((location) => {
     const existing = state.locationHistory.find(item => item.location === location);
     let updatedHistory;
 
@@ -365,9 +418,10 @@ export function InspectionProvider({ children }) {
 
     saveToLocalStorage('fire_inspection_location_history', updatedHistory);
     dispatch({ type: actionTypes.LOAD_LOCATION_HISTORY, payload: updatedHistory });
-  };
+  }, [state.locationHistory, saveToLocalStorage]);
 
-  const deleteIssue = async (inspectionId, issueId) => {
+  // 지적사항 삭제
+  const deleteIssue = useCallback(async (inspectionId, issueId) => {
     try {
       const inspection = state.inspections.find(i => i.id === inspectionId);
       if (!inspection) throw new Error('Inspection not found');
@@ -388,11 +442,14 @@ export function InspectionProvider({ children }) {
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
       throw error;
     }
-  };
+  }, [state.inspections, saveToLocalStorage]);
 
-  const deleteInspection = async (inspectionId) => {
+  // 점검 삭제
+  const deleteInspection = useCallback(async (inspectionId) => {
     try {
-      const updatedInspections = state.inspections.filter(inspection => inspection.id !== inspectionId);
+      const updatedInspections = state.inspections.filter(inspection => 
+        inspection.id !== inspectionId
+      );
       saveToLocalStorage('fire_inspection_inspections', updatedInspections);
       dispatch({ type: actionTypes.DELETE_INSPECTION, payload: inspectionId });
     } catch (error) {
@@ -400,30 +457,35 @@ export function InspectionProvider({ children }) {
       dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
       throw error;
     }
-  };
+  }, [state.inspections, saveToLocalStorage]);
 
-  const setCurrentSite = (site) => {
+  // 현재 상태 설정
+  const setCurrentSite = useCallback((site) => {
     dispatch({ type: actionTypes.SET_CURRENT_SITE, payload: site });
-  };
+  }, []);
 
-  const setCurrentInspection = (inspection) => {
+  const setCurrentInspection = useCallback((inspection) => {
     dispatch({ type: actionTypes.SET_CURRENT_INSPECTION, payload: inspection });
-  };
+  }, []);
 
-  const getInspectionsBySite = (siteId) => {
+  // 특정 현장의 점검 목록 가져오기
+  const getInspectionsBySite = useCallback((siteId) => {
     return state.inspections.filter(inspection => inspection.site_id === siteId);
-  };
+  }, [state.inspections]);
 
-  const getSortedIssueHistory = () => {
+  // 정렬된 히스토리 가져오기
+  const getSortedIssueHistory = useCallback(() => {
     return [...state.issueHistory].sort((a, b) => b.count - a.count);
-  };
+  }, [state.issueHistory]);
 
-  const getSortedLocationHistory = () => {
-    return [...state.locationHistory].sort((a, b) => new Date(b.last_used) - new Date(a.last_used));
-  };
+  const getSortedLocationHistory = useCallback(() => {
+    return [...state.locationHistory].sort((a, b) => 
+      new Date(b.last_used) - new Date(a.last_used)
+    );
+  }, [state.locationHistory]);
 
   // 보고서 내용 생성 함수
-  const generateReportContent = (inspection, site) => {
+  const generateReportContent = useCallback((inspection, site) => {
     const date = formatDateOnly(inspection.created_at);
 
     // 설비별 지적사항 그룹핑 및 정렬
@@ -431,7 +493,7 @@ export function InspectionProvider({ children }) {
       if (!acc[issue.facility_type]) {
         acc[issue.facility_type] = {};
       }
-
+      
       const key = `${issue.description}_${issue.location}`;
       if (!acc[issue.facility_type][key]) {
         acc[issue.facility_type][key] = {
@@ -440,14 +502,14 @@ export function InspectionProvider({ children }) {
           detailLocations: []
         };
       }
-
+      
       if (issue.detail_location && issue.detail_location.trim()) {
         const trimmedDetailLocation = issue.detail_location.trim();
         if (!acc[issue.facility_type][key].detailLocations.includes(trimmedDetailLocation)) {
           acc[issue.facility_type][key].detailLocations.push(trimmedDetailLocation);
         }
       }
-
+      
       return acc;
     }, {});
 
@@ -462,29 +524,29 @@ export function InspectionProvider({ children }) {
 점검일: ${date}
 
 ${sortedFacilities.map(facilityType => {
-  const facilityIssues = Object.values(groupedIssues[facilityType]);
-  const sectionTitle = facilityType === '권고사항' ? '권고사항' : `설비명: ${facilityType}`;
-  
-  return `
+      const facilityIssues = Object.values(groupedIssues[facilityType]);
+      const sectionTitle = facilityType === '권고사항' ? '권고사항' : `설비명: ${facilityType}`;
+      
+      return `
 ${sectionTitle}
 
 ${facilityIssues.map((issue, index) => {
-  let locationText = issue.location;
-  if (issue.detailLocations.length > 0) {
-    locationText += ` ${issue.detailLocations.join(', ')}`;
-  }
-  return `${index + 1}. ${issue.description}
+        let locationText = issue.location;
+        if (issue.detailLocations.length > 0) {
+          locationText += ` ${issue.detailLocations.join(',')}`;
+        }
+        return `${index + 1}. ${issue.description}
 위치: ${locationText}`;
-}).join('\n')}
-
+      }).join('\n')}
 `;
-}).join('')}
+    }).join('')}
 
 ${inspection.notes ? `점검 특이사항: ${inspection.notes}\n` : ''}${site?.notes ? `현장 특이사항: ${site.notes}\n` : ''}
 
 --- 보고서 끝 ---`.trim();
-  };
+  }, [facilityOrder]);
 
+  // Context 값 메모화 (성능 최적화)
   const contextValue = useMemo(() => ({
     ...state,
     createSite,
@@ -503,7 +565,25 @@ ${inspection.notes ? `점검 특이사항: ${inspection.notes}\n` : ''}${site?.n
     getSortedLocationHistory,
     generateReportContent,
     facilityOrder,
-  }), [state, facilityOrder]);
+  }), [
+    state,
+    createSite,
+    updateSite,
+    setCurrentSite,
+    deleteSite,
+    createInspection,
+    updateInspection,
+    setCurrentInspection,
+    addIssueToInspection,
+    updateIssue,
+    deleteIssue,
+    deleteInspection,
+    getInspectionsBySite,
+    getSortedIssueHistory,
+    getSortedLocationHistory,
+    generateReportContent,
+    facilityOrder,
+  ]);
 
   return (
     <InspectionContext.Provider value={contextValue}>

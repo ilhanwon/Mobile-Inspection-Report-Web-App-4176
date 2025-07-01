@@ -14,7 +14,6 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
     location: editingIssue?.location || '',
     detailLocation: editingIssue?.detail_location || '',
   });
-
   const [showHistory, setShowHistory] = useState(false);
   const [showLocationHistory, setShowLocationHistory] = useState(false);
   const [isCustomInput, setIsCustomInput] = useState(!!editingIssue?.description);
@@ -45,22 +44,34 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
   // 최근 위치를 기본값으로 설정 (편집 모드가 아닐 때만)
   useEffect(() => {
     if (!editingIssue && locationHistory.length > 0 && !formData.location) {
-      setFormData(prev => ({ ...prev, location: locationHistory[0].location }));
+      setFormData(prev => ({
+        ...prev,
+        location: locationHistory[0].location
+      }));
     }
   }, [locationHistory, editingIssue, formData.location]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleHistorySelect = (description) => {
-    setFormData(prev => ({ ...prev, description }));
+    setFormData(prev => ({
+      ...prev,
+      description
+    }));
     setShowHistory(false);
     setIsCustomInput(false);
   };
 
   const handleLocationSelect = (location) => {
-    setFormData(prev => ({ ...prev, location }));
+    setFormData(prev => ({
+      ...prev,
+      location
+    }));
     setShowLocationHistory(false);
   };
 
@@ -111,7 +122,7 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
               </span>
             )}
           </div>
-
+          
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !formData.description.trim() || !formData.location.trim()}
@@ -145,8 +156,8 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
                   value={formData.facilityType}
                   onChange={(e) => handleInputChange('facilityType', e.target.value)}
                   className={`px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium appearance-none bg-white min-w-32 ${
-                    formData.facilityType === '권고사항'
-                      ? 'text-green-700 bg-green-50 border-green-200'
+                    formData.facilityType === '권고사항' 
+                      ? 'text-green-700 bg-green-50 border-green-200' 
                       : 'text-gray-900'
                   }`}
                   required
@@ -256,11 +267,7 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
               <textarea
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder={
-                  formData.facilityType === '권고사항'
-                    ? "권고내용을 구체적으로 입력하세요"
-                    : "불량내용을 구체적으로 입력하세요"
-                }
+                placeholder={formData.facilityType === '권고사항' ? "권고내용을 구체적으로 입력하세요" : "불량내용을 구체적으로 입력하세요"}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none text-sm"
                 required
@@ -369,13 +376,20 @@ function IssueForm({ onSubmit, onCancel, editingIssue = null }) {
               isSubmitting || !formData.description.trim() || !formData.location.trim()
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : formData.facilityType === '권고사항'
-                ? 'bg-green-500 text-white hover:bg-green-600 active:scale-95 shadow-lg'
-                : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95 shadow-lg'
+                  ? 'bg-green-500 text-white hover:bg-green-600 active:scale-95 shadow-lg'
+                  : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95 shadow-lg'
             }`}
           >
             <SafeIcon icon={FiCheck} className="w-4 h-4" />
             <span>
-              {isSubmitting ? '저장 중...' : editingIssue ? '수정 완료' : formData.facilityType === '권고사항' ? '권고사항 추가' : '지적사항 추가'}
+              {isSubmitting 
+                ? '저장 중...' 
+                : editingIssue 
+                  ? '수정 완료' 
+                  : formData.facilityType === '권고사항' 
+                    ? '권고사항 추가' 
+                    : '지적사항 추가'
+              }
             </span>
           </button>
         </div>

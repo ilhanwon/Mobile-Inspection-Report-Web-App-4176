@@ -8,12 +8,18 @@ import { useInspection } from '../context/InspectionContext';
 import { formatDateOnly } from '../utils/dateUtils';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiArrowLeft, FiFileText, FiMapPin, FiUser, FiCalendar, FiPlus, FiEdit2, FiClipboard, FiEdit, FiSave, FiX } = FiIcons;
+const { 
+  FiArrowLeft, FiFileText, FiMapPin, FiUser, FiCalendar, FiPlus, 
+  FiEdit2, FiClipboard, FiEdit, FiSave, FiX, FiTrash2 
+} = FiIcons;
 
 function InspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { inspections, sites, addIssueToInspection, updateIssue, deleteIssue, updateInspection, facilityOrder } = useInspection();
+  const { 
+    inspections, sites, addIssueToInspection, updateIssue, deleteIssue, 
+    updateInspection, facilityOrder 
+  } = useInspection();
   
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -42,7 +48,7 @@ function InspectionDetail() {
           issues: [] // 개별 이슈들을 저장하여 편집/삭제 가능하게 함
         };
       }
-
+      
       // 상세위치가 있고 중복되지 않는 경우만 추가
       if (issue.detail_location && issue.detail_location.trim()) {
         const trimmedDetailLocation = issue.detail_location.trim();
@@ -50,9 +56,10 @@ function InspectionDetail() {
           acc[issue.facility_type][key].detailLocations.push(trimmedDetailLocation);
         }
       }
-
+      
       // 개별 이슈 저장 (편집/삭제용)
       acc[issue.facility_type][key].issues.push(issue);
+      
       return acc;
     }, {});
 
@@ -160,7 +167,7 @@ function InspectionDetail() {
               <SafeIcon icon={FiArrowLeft} className="w-5 h-5" />
               <span className="font-medium">현장</span>
             </button>
-
+            
             <div className="flex space-x-2">
               {!isEditingInspection ? (
                 <>
@@ -333,10 +340,10 @@ function InspectionDetail() {
                       <h3 className="font-semibold text-gray-900 mb-3 text-sm">{facilityType}</h3>
                       <div className="space-y-3">
                         {Object.values(groupedIssues[facilityType]).map((groupedIssue, index) => {
-                          // 위치와 상세위치 형식: "101동 2계단 3층, 지하1층"
+                          // 위치와 상세위치 형식: "101동 2계단 3층,지하1층"
                           let locationText = groupedIssue.location;
                           if (groupedIssue.detailLocations.length > 0) {
-                            locationText += ` ${groupedIssue.detailLocations.join(', ')}`;
+                            locationText += ` ${groupedIssue.detailLocations.join(',')}`;
                           }
 
                           return (
@@ -378,7 +385,7 @@ function InspectionDetail() {
                                     className="p-1 text-red-500 hover:text-red-700 transition-colors duration-200"
                                     title="삭제"
                                   >
-                                    <SafeIcon icon={FiIcons.FiX} className="w-4 h-4" />
+                                    <SafeIcon icon={FiTrash2} className="w-4 h-4" />
                                   </button>
                                 </div>
                               </div>

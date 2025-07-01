@@ -11,225 +11,141 @@ function ImprovedNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const [showBulkkunyangModal, setShowBulkkunyangModal] = useState(false);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const navItems = [
     {
       path: '/sites',
       icon: FiHome,
       label: '현장',
-      id: 'sites',
-      color: 'text-red-500'
+      id: 'sites'
     },
     {
       path: '/create-inspection',
       icon: FiPlus,
       label: '점검',
       id: 'inspect',
-      color: 'text-blue-500',
-      isAction: true
+      isPrimary: true
     },
     {
       path: null,
       icon: FiMessageCircle,
-      label: '불끄냥',
+      label: 'AI 도움',
       id: 'bulkkunyang',
-      color: 'text-orange-500',
-      isModal: true,
       onClick: () => setShowBulkkunyangModal(true)
     }
   ];
 
-  // 키보드 감지 (더 정확한 방법)
+  // 네비게이션 가시성 보장
   useEffect(() => {
-    let initialViewportHeight = window.innerHeight;
-    
-    const handleResize = () => {
-      const currentHeight = window.innerHeight;
-      const heightDifference = initialViewportHeight - currentHeight;
-      
-      // 키보드가 올라왔다고 판단하는 기준 (100px 이상 차이)
-      setKeyboardVisible(heightDifference > 100);
-    };
-
-    const handleVisualViewportChange = () => {
-      if (window.visualViewport) {
-        const keyboardHeight = window.innerHeight - window.visualViewport.height;
-        setKeyboardVisible(keyboardHeight > 100);
+    const ensureVisibility = () => {
+      const navElement = document.querySelector('.simple-navigation');
+      if (navElement) {
+        navElement.style.position = 'fixed';
+        navElement.style.bottom = '0';
+        navElement.style.left = '0';
+        navElement.style.right = '0';
+        navElement.style.zIndex = '9999';
+        navElement.style.display = 'block';
+        navElement.style.visibility = 'visible';
+        navElement.style.opacity = '1';
+        navElement.style.transform = 'none';
+        navElement.style.pointerEvents = 'auto';
       }
     };
 
-    // 초기 뷰포트 높이 저장
-    const handleLoad = () => {
-      initialViewportHeight = window.innerHeight;
-    };
+    ensureVisibility();
+    const intervalId = setInterval(ensureVisibility, 1000);
 
-    // 이벤트 리스너 등록
-    window.addEventListener('load', handleLoad);
-    window.addEventListener('resize', handleResize);
+    const handleEvent = () => setTimeout(ensureVisibility, 50);
     
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleVisualViewportChange);
-    }
-
-    // 초기 상태 설정
-    handleResize();
+    window.addEventListener('resize', handleEvent);
+    window.addEventListener('orientationchange', handleEvent);
+    window.addEventListener('scroll', handleEvent, { passive: true });
+    document.addEventListener('visibilitychange', handleEvent);
 
     return () => {
-      window.removeEventListener('load', handleLoad);
-      window.removeEventListener('resize', handleResize);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleVisualViewportChange);
-      }
+      clearInterval(intervalId);
+      window.removeEventListener('resize', handleEvent);
+      window.removeEventListener('orientationchange', handleEvent);
+      window.removeEventListener('scroll', handleEvent);
+      document.removeEventListener('visibilitychange', handleEvent);
     };
   }, []);
 
   return (
     <>
-      {/* 완전 고정 네비게이션 - 애니메이션 제거하고 순수 CSS로 고정 */}
-      <div
-        className="navigation-container"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 99999,
-          pointerEvents: 'auto',
-          transform: 'none',
-          willChange: 'auto',
-        }}
-      >
-        {/* 강력한 배경 블러 */}
-        <div 
-          className="absolute inset-x-0 bottom-0 pointer-events-none"
-          style={{
-            height: '120px',
-            background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.98) 40%, rgba(255,255,255,0.9) 70%, rgba(255,255,255,0.7) 100%)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-          }}
-        />
+      {/* 심플한 네비게이션 */}
+      <nav className="simple-navigation navigation-fixed force-navigation-visible">
+        <div className="bg-white border-t border-gray-200">
+          <div className="max-w-md mx-auto px-4 py-2">
+            <div className="flex items-center justify-around">
+              {navItems.map((item) => {
+                const isActive = item.path && (
+                  location.pathname === item.path ||
+                  (item.id === 'sites' && (
+                    location.pathname.startsWith('/site') ||
+                    location.pathname.startsWith('/inspection')
+                  ))
+                );
 
-        {/* 메인 네비게이션 배경 */}
-        <div 
-          className="relative"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-            borderTop: '1px solid rgba(229, 231, 235, 0.8)',
-            boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.12), 0 -4px 16px rgba(0, 0, 0, 0.08)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-          }}
-        >
-          {/* 네비게이션 콘텐츠 */}
-          <div className="max-w-md mx-auto">
-            <div 
-              className="px-6 py-4"
-              style={{
-                paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
-              }}
-            >
-              <div className="flex justify-around items-center">
-                {navItems.map((item) => {
-                  const isActive = item.path && (
-                    location.pathname === item.path ||
-                    (item.id === 'sites' && (
-                      location.pathname.startsWith('/site') ||
-                      location.pathname.startsWith('/inspection')
-                    ))
-                  );
+                const handleClick = () => {
+                  if (item.onClick) {
+                    item.onClick();
+                  } else if (item.path) {
+                    navigate(item.path);
+                  }
+                };
 
-                  const handleClick = () => {
-                    if (item.isModal && item.onClick) {
-                      item.onClick();
-                    } else if (item.path) {
-                      navigate(item.path);
-                    }
-                  };
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={handleClick}
+                return (
+                  <motion.button
+                    key={item.id}
+                    onClick={handleClick}
+                    className={`
+                      flex flex-col items-center justify-center py-2 px-4 min-w-[60px] min-h-[52px]
+                      transition-all duration-200 ease-out
+                      ${item.isPrimary 
+                        ? 'bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600' 
+                        : isActive 
+                          ? 'text-red-500' 
+                          : 'text-gray-400 hover:text-gray-600'
+                      }
+                    `}
+                    whileTap={{ scale: 0.95 }}
+                    aria-label={item.label}
+                  >
+                    {/* 아이콘 */}
+                    <SafeIcon 
+                      icon={item.icon} 
                       className={`
-                        relative flex flex-col items-center space-y-2 p-3 rounded-2xl 
-                        transition-all duration-200 ease-out
-                        min-h-[68px] min-w-[68px] 
-                        touch-manipulation
-                        ${item.isAction
-                          ? 'bg-red-500 text-white shadow-lg hover:bg-red-600 hover:shadow-xl scale-105 hover:scale-110'
-                          : item.isModal
-                          ? 'bg-orange-50 text-orange-600 hover:bg-orange-100 border border-orange-200 hover:border-orange-300'
-                          : isActive
-                          ? `${item.color} bg-red-50 border border-red-200`
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50 border border-transparent'
-                        }
+                        w-6 h-6 mb-1 transition-transform duration-200
+                        ${item.isPrimary ? 'text-white' : ''}
+                        hover:scale-110
                       `}
-                      style={{
-                        WebkitTapHighlightColor: 'transparent',
-                        touchAction: 'manipulation',
-                        minWidth: '68px',
-                        minHeight: '68px',
-                      }}
-                    >
-                      {/* 아이콘 */}
-                      <SafeIcon
-                        icon={item.icon}
-                        className={`w-6 h-6 transition-transform duration-200 ${
-                          item.isAction
-                            ? 'text-white'
-                            : item.isModal
-                            ? 'text-orange-600'
-                            : isActive
-                            ? item.color
-                            : 'text-gray-400'
-                        }`}
+                    />
+                    
+                    {/* 라벨 */}
+                    <span className={`
+                      text-xs font-medium
+                      ${item.isPrimary ? 'text-white' : ''}
+                    `}>
+                      {item.label}
+                    </span>
+
+                    {/* 활성 상태 점 표시 */}
+                    {isActive && !item.isPrimary && (
+                      <motion.div
+                        className="absolute -bottom-1 w-1 h-1 bg-red-500 rounded-full"
+                        layoutId="activeIndicator"
+                        transition={{ duration: 0.2 }}
                       />
-
-                      {/* 라벨 */}
-                      <span
-                        className={`text-xs font-medium leading-tight ${
-                          item.isAction
-                            ? 'text-white'
-                            : item.isModal
-                            ? 'text-orange-600'
-                            : isActive
-                            ? item.color
-                            : 'text-gray-400'
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-
-                      {/* 활성 인디케이터 */}
-                      {isActive && !item.isAction && !item.isModal && (
-                        <div
-                          className={`absolute -top-1 w-2 h-2 rounded-full ${item.color.replace('text-', 'bg-')}`}
-                        />
-                      )}
-
-                      {/* 불끄냥 버튼 특별 효과 */}
-                      {item.isModal && item.id === 'bulkkunyang' && (
-                        <div
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full shadow-md flex items-center justify-center"
-                        >
-                          <span className="text-white text-xs">🔥</span>
-                        </div>
-                      )}
-
-                      {/* 버튼 글로우 효과 (활성 상태) */}
-                      {(isActive || item.isAction) && (
-                        <div className="absolute inset-0 rounded-2xl bg-current opacity-5 pointer-events-none"></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
           </div>
         </div>
-      </div>
+      </nav>
 
       {/* 불끄냥 모달 */}
       <AnimatePresence>

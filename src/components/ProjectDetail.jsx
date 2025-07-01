@@ -6,15 +6,20 @@ import IssueForm from './IssueForm';
 import { useInspection } from '../context/InspectionContext';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiArrowLeft, FiDownload, FiMapPin, FiUser, FiCalendar, FiFileText, FiPlus, FiCheck, FiEdit2 } = FiIcons;
+const { 
+  FiArrowLeft, FiDownload, FiMapPin, FiUser, FiCalendar, FiFileText, 
+  FiPlus, FiCheck, FiEdit2, FiX 
+} = FiIcons;
 
 function ProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { projects, sites, exportReport, addIssueToProject, deleteIssue, completeProject, reopenProject, facilityOrder } = useInspection();
-  
+  const { 
+    projects, sites, exportReport, addIssueToProject, deleteIssue, 
+    completeProject, reopenProject, facilityOrder 
+  } = useInspection();
   const [showIssueForm, setShowIssueForm] = React.useState(false);
-  
+
   const project = projects.find(p => p.id === id);
   const site = project?.site || sites.find(s => s.id === project?.site_id);
 
@@ -111,6 +116,7 @@ function ProjectDetail() {
             <SafeIcon icon={FiArrowLeft} className="w-5 h-5" />
             <span>현장</span>
           </button>
+          
           <div className="flex space-x-2">
             {project.status === 'completed' ? (
               <button
@@ -160,7 +166,7 @@ function ProjectDetail() {
               </span>
             )}
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="flex items-center space-x-3">
               <SafeIcon icon={FiMapPin} className="w-5 h-5 text-gray-500" />
@@ -264,7 +270,7 @@ function ProjectDetail() {
                               onClick={() => removeIssue(issue.id)}
                               className="ml-2 p-1 text-red-500 hover:text-red-700 transition-colors duration-200"
                             >
-                              <SafeIcon icon={FiIcons.FiX} className="w-4 h-4" />
+                              <SafeIcon icon={FiX} className="w-4 h-4" />
                             </button>
                           </div>
                         </motion.div>

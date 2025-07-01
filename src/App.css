@@ -1,6 +1,10 @@
 .app-container {
-  min-height: 100vh;
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
   background-color: #f9fafb;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 전역 스타일 리셋 */
@@ -9,33 +13,69 @@ html, body {
   padding: 0;
   overflow-x: hidden;
   position: relative;
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
 #root {
   position: relative;
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
   min-height: 100vh;
-  overflow-x: hidden;
+  min-height: -webkit-fill-available;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 네비게이션 컨테이너 강제 고정 */
-.navigation-container {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 99999 !important;
-  pointer-events: auto !important;
-  transform: none !important;
-  will-change: auto !important;
-  contain: layout style paint;
+/* 모바일 브라우저 주소창 대응 */
+@supports (-webkit-appearance: none) {
+  html, body, #root {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  
+  .app-container {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
 }
 
-/* 메인 콘텐츠 하단 여백 확보 */
-.main-content-with-nav {
-  padding-bottom: 120px !important; /* 네비게이션 높이 + 여유 공간 */
-  min-height: 100vh;
-  position: relative;
-  box-sizing: border-box;
+/* iOS Safari 특별 처리 */
+@supports (-webkit-touch-callout: none) {
+  html, body, #root {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  
+  .app-container {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* 심플한 네비게이션 스타일 */
+.simple-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  /* 안전 영역 대응 */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+/* 메인 콘텐츠 영역 조정 */
+.main-content-adjusted {
+  padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(68px + max(8px, env(safe-area-inset-bottom, 0px)));
 }
 
 /* 모바일 최적화 */
@@ -71,88 +111,28 @@ html, body {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* 모바일 입력 필드 최적화 */
-  input,
-  textarea,
-  select {
-    min-height: 44px;
-    border-radius: 12px;
-  }
-
   /* 네비게이션 모바일 최적화 */
-  .navigation-container {
-    max-width: 100vw;
+  .simple-navigation {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 8px));
+  }
+  
+  .main-content-adjusted {
+    padding-bottom: calc(72px + max(12px, env(safe-area-inset-bottom, 8px)));
   }
 }
 
 /* 안전 영역 대응 강화 */
 @supports (padding: max(0px)) {
-  .safe-area-pb {
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
-  }
-
-  .pb-safe {
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
-  }
-
-  .safe-area-inset {
-    padding-left: max(16px, env(safe-area-inset-left));
-    padding-right: max(16px, env(safe-area-inset-right));
-    padding-top: max(16px, env(safe-area-inset-top));
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  .simple-navigation {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
 }
 
-/* iOS 전용 최적화 */
-@supports (-webkit-touch-callout: none) {
-  /* iOS에서 네비게이션 강제 고정 */
-  .navigation-container {
-    position: fixed !important;
-    bottom: 0 !important;
-    transform: translate3d(0, 0, 0) !important;
-  }
-  
-  /* iOS Safari 주소창 대응 */
-  .main-content-with-nav {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-  }
-  
-  body {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-  }
-}
-
-/* 안드로이드 키보드 대응 */
-@media screen and (max-height: 500px) {
-  .navigation-container {
-    transform: none !important;
-    position: fixed !important;
-    bottom: 0 !important;
-    display: block !important;
-    visibility: visible !important;
-  }
-}
-
-/* 반응형 네비게이션 */
-@media (max-width: 640px) {
-  .navigation-container {
-    max-width: 100vw;
-    left: 0;
-    right: 0;
-  }
-}
-
-@media (min-width: 641px) {
-  .navigation-container {
-    max-width: 28rem; /* max-w-md */
-    left: 50%;
-    transform: translateX(-50%) !important;
-    border-radius: 16px 16px 0 0;
-    border-left: 1px solid rgba(229, 231, 235, 0.8);
-    border-right: 1px solid rgba(229, 231, 235, 0.8);
-  }
+/* 뷰포트 높이 변수 */
+:root {
+  --vh: 1vh;
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --navigation-height: 68px;
 }
 
 /* 스크롤바 스타일링 */
@@ -213,45 +193,10 @@ button {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* 전체 화면 모달 최적화 */
-.fullscreen-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
-  background: white;
-}
-
 /* 부드러운 스크롤 */
 .smooth-scroll {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-}
-
-/* 그리드 레이아웃 최적화 */
-.grid-responsive {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-
-@media (max-width: 480px) {
-  .grid-responsive {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* 버튼 그룹 최적화 */
-.button-group {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.button-group > button {
-  flex: 1;
-  min-height: 48px;
 }
 
 /* 카드 호버 효과 */
@@ -289,134 +234,56 @@ button {
   }
 }
 
-/* 고해상도 디스플레이 최적화 */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .navigation-container {
-    border-top: 0.5px solid rgba(229, 231, 235, 0.8);
-  }
-}
-
-/* 다크 모드 대응 */
-@media (prefers-color-scheme: dark) {
-  .navigation-container {
-    background: rgba(17, 24, 39, 0.95) !important;
-  }
-  
-  .navigation-container > div:last-child {
-    background-color: rgba(17, 24, 39, 0.98) !important;
-    border-top-color: rgba(75, 85, 99, 0.8) !important;
-  }
-}
-
 /* 접근성 향상 */
 @media (prefers-reduced-motion: reduce) {
   button {
-    transition: none !important;
-    animation: none !important;
+    transition: none;
+    animation: none;
+  }
+  
+  .animate-pulse {
+    animation: none;
   }
 }
 
 /* 고대비 모드 지원 */
 @media (prefers-contrast: high) {
-  .navigation-container {
-    border-top: 2px solid #000 !important;
-    background: rgb(255, 255, 255) !important;
-  }
-  
   button {
-    border: 1px solid #000 !important;
-  }
-}
-
-/* 특수 상황 대응 */
-/* 키보드 팝업 시에도 네비게이션 유지 */
-@media (max-height: 400px) {
-  .navigation-container {
-    position: fixed !important;
-    bottom: 0 !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
-}
-
-/* 가로 모드에서도 네비게이션 유지 */
-@media (orientation: landscape) and (max-height: 500px) {
-  .navigation-container {
-    position: fixed !important;
-    bottom: 0 !important;
+    border: 2px solid;
   }
   
-  .main-content-with-nav {
-    padding-bottom: 100px !important;
+  .simple-navigation {
+    border-top: 2px solid #000;
   }
 }
 
-/* PWA 모드에서 네비게이션 최적화 */
-@media (display-mode: standalone) {
-  .navigation-container {
-    position: fixed !important;
-    bottom: 0 !important;
-    z-index: 99999 !important;
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .simple-navigation {
+    background: rgba(17, 24, 39, 0.95);
+    border-top-color: rgba(75, 85, 99, 0.8);
   }
 }
 
-/* 풀스크린 모드에서도 네비게이션 유지 */
-@media (display-mode: fullscreen) {
-  .navigation-container {
-    position: fixed !important;
-    bottom: 0 !important;
-    z-index: 99999 !important;
-  }
-}
-
-/* 강제 표시 클래스 */
-.force-visible {
+/* 네비게이션 강제 보이기 */
+.force-navigation-visible {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
   position: fixed !important;
   bottom: 0 !important;
-  z-index: 99999 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
 }
 
-/* 네비게이션 컨테이너 디버깅 */
-.navigation-container {
-  /* 디버깅용 - 실제 운영에서는 제거 */
-  /* outline: 2px solid red; */
-}
-
-/* 모든 상황에서 네비게이션 강제 표시 */
-.navigation-container,
-.navigation-container * {
-  box-sizing: border-box;
-}
-
-/* 컨테이너 오버플로우 방지 */
-.main-content-with-nav {
-  overflow-x: hidden;
-  position: relative;
-  width: 100%;
-}
-
-/* 네비게이션이 잘리지 않도록 보장 */
-body {
-  padding-bottom: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-html {
-  padding-bottom: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-/* 스크롤 컨테이너 최적화 */
-.main-content-with-nav {
-  scroll-padding-bottom: 120px;
-}
-
-/* Z-index 스택 컨텍스트 최적화 */
-.navigation-container {
-  isolation: isolate;
+/* 움직임 감소 설정 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
